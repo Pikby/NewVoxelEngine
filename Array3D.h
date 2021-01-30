@@ -33,7 +33,7 @@ private:
 
 public:
 	CubeArray(){
-		memset(cubeArray, 0, sizeof(T) * ArrSize * ArrSize * ArrSize);
+		reset();
 	}
 
 	CubeArray(const T& value) {
@@ -53,10 +53,16 @@ public:
 	}
 
 	void set(int x, int y, int z,const T& val) {
+		if (x >= ArrSize || y >= ArrSize || z >= ArrSize) {
+			std::cout << x << ":" << y << ":" << z << " out of range\n";
+		}
 		cubeArray[getArrayLocation(x,y,z)] = val;
 	}
 
 	T& get(int x, int y, int z) {
+		if (x >= ArrSize || y >= ArrSize || z >= ArrSize || x < 0  || y <0 || z<0) {
+			std::cout << x << ":" << y << ":" << z << " out of range\n";
+		}
 		return cubeArray[getArrayLocation(x, y, z)];
 	}
 
@@ -66,5 +72,9 @@ public:
 
 	void reset() {
 		memset(cubeArray, 0, sizeof(T) * ArrSize * ArrSize * ArrSize);
+	}
+
+	void reset(const T& value) {
+		fill(value);
 	}
 };
