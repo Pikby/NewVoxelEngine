@@ -21,42 +21,35 @@ template <typename T> int sign(T val) {
 }
 
 
-struct ChunkVertex {
-	glm::vec3 pos;
-	glm::vec3 norm;
-};
 
-struct ChunkCube {
-	float indice;
-	Voxel voxels[8];
-};
 
-void Chunk::calculateMesh() {
-	static CubeArray<ChunkCube, ChunkSize + 2> surfaceArray({ -1 });
-	static CubeArray<Voxel, ChunkSize + 2> fullVoxels;
-	surfaceArray.reset({ -1 });
-	fullVoxels.reset();
 
-	std::vector<ChunkVertex> surfacePoints;
+std::shared_ptr<ChunkMesh> Chunk::calculateMesh() {
 	static const glm::ivec3 offsets[8] = { {0,0,0},{1,0,0},{0,1,0},{1,1,0}, {0,0,1},{1,0,1},{0,1,1},{1,1,1} };
+	static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
+	CubeArray<Voxel, ChunkSize + 2> fullVoxels;
 
 	for (int x = 0; x < ChunkSize + 2; x++) {
 		for (int y = 0; y < ChunkSize + 2; y++) {
 			for (int z = 0; z < ChunkSize + 2; z++) {
-				static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 				glm::ivec3 curPos(x, y, z);
 
+				if (x < ChunkSize && y < ChunkSize && z < ChunkSize) {
+					fullVoxels.set(curPos, voxelArray.get(curPos));
+					continue;
+				}
 
 				bool isOutsideChunk = false;
 				for (int j = 0; j < 7; j++) {
-					if (glm::all(glm::greaterThanEqual(curPos, glm::ivec3(ChunkSize * chunkNeighboursTable[j])))) {
+					//if (glm::all(glm::greaterThanEqual(curPos, glm::ivec3(ChunkSize * chunkNeighboursTable[j])))) { slow on cpu profiler
+					if(curPos.x >= ChunkSize * chunkNeighboursTable[j].x && curPos.y >= ChunkSize * chunkNeighboursTable[j].y && curPos.z >= ChunkSize * chunkNeighboursTable[j].z){
 						if (auto neigh = chunkNeighbours[j].lock()) {
 							fullVoxels.set(curPos, neigh->getVoxel(curPos - glm::ivec3(ChunkSize * chunkNeighboursTable[j])));
 							isOutsideChunk = true;
 							break;
 						}
 						else {
-							std::cout << "Fatal Error finding neihbour in memory, ABORT\n";
+							std::cout << "Fatal Error finding neighbour in memory, ABORT\n";
 							throw - 1;
 						}
 					}
@@ -70,13 +63,21 @@ void Chunk::calculateMesh() {
 		}
 	}
 
+	//Moving some memory to the heap to help stop stack overflow
+	auto surfaceArrayPtr = std::make_unique<CubeArray<ChunkCube, ChunkSize + 2>>();
+	auto& surfaceArray = *(surfaceArrayPtr.get());
+	surfaceArray.reset({ -1 });
+
+
+	
+	auto chunkMesh = std::make_shared<ChunkMesh>();
 	for (int x = 0; x < ChunkSize + 1; x++) {
 		for (int y = 0; y < ChunkSize + 1; y++) {
 			for (int z = 0; z < ChunkSize + 1; z++) {
 				glm::ivec3 curPos(x, y, z);
 				ChunkCube chunkCube;
 
-				static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
+				
 
 				for (int i = 0; i < 8; i++) {
 					glm::ivec3 offset = curPos + offsets[i];
@@ -93,7 +94,9 @@ void Chunk::calculateMesh() {
 				if (sameSign) continue;
 
 				static const std::pair<int, int> edges[12] = { {0,1},{0,2},{1,3},{2,3},{4,5},{4,6},{5,7},{6,7},{0,4},{1,5},{2,6},{3,7} };
-				std::vector<glm::vec3> points;
+		
+				glm::vec3 surfacePoint;
+				int count = 1;
 				for (int i = 0; i < 12; i++) {
 					Voxel vox1 = chunkCube.voxels[edges[i].first];
 					Voxel vox2 = chunkCube.voxels[edges[i].second];
@@ -104,15 +107,12 @@ void Chunk::calculateMesh() {
 					glm::vec3 p2 = curPos + offsets[edges[i].second];
 
 					glm::vec3 pf = (1 - alpha) * p1 + alpha * p2;
-					points.push_back(pf);
+					surfacePoint += (pf - surfacePoint) / static_cast<float>(count);
+					count++;
 				}
 
 
-				/*
-				const int xDir[4] = { 0,3,4,7 };
-				const int yDir[4] = { 1,2,5,6 };
-				const int zDir[4] = { 8,9,10,11 };
-				*/
+
 				static const glm::ivec3 dir[4] = { {0,1,8},{3,2,9},{4,5,10},{7,6,11} };
 				glm::vec3 norm(0);
 				for (int i = 0; i < 4; i++) {
@@ -121,12 +121,6 @@ void Chunk::calculateMesh() {
 						chunkCube.voxels[edges[dir[i].z].second].val - chunkCube.voxels[edges[dir[i].z].first].val);
 				}
 
-				glm::vec3 totalPoints(0);
-				for (auto point : points) {
-					totalPoints += point;
-				}
-
-				glm::vec3 surfacePoint = totalPoints / static_cast<float>(points.size());
 
 				if (norm != glm::vec3(0)) {
 
@@ -137,16 +131,15 @@ void Chunk::calculateMesh() {
 
 
 
-				surfacePoints.push_back({ surfacePoint,norm });
+				chunkMesh->surfacePoints.push_back({ surfacePoint,norm });
 
-				chunkCube.indice = surfacePoints.size() - 1;
+				chunkCube.indice = chunkMesh->surfacePoints.size() - 1;
 				surfaceArray.set(curPos, chunkCube);
 			}
 		}
 	}
 
 
-	std::vector<glm::ivec3> indices;
 	for (int x = 0; x < ChunkSize + 1; x++) {
 		for (int y = 0; y < ChunkSize + 1; y++) {
 			for (int z = 0; z < ChunkSize + 1; z++) {
@@ -172,7 +165,7 @@ void Chunk::calculateMesh() {
 						if (!isClockwise) {
 							tri = glm::ivec3(vox[tris[k].y], vox[tris[k].x], vox[tris[k].z]);
 						}
-						indices.push_back(tri);
+						chunkMesh->indices.push_back(tri);
 					}
 
 				}
@@ -180,45 +173,57 @@ void Chunk::calculateMesh() {
 		}
 	}
 
-	//std::cout << indices.size() << ": indices count\n";
+	//return meshPair(surfacePoints,indices);
+	chunkFlag = ChunkFlags::Meshed;
+	return chunkMesh;
+
+}
+
+void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices) {
+
+
+
 	if (surfacePoints.size() <= 0 || indices.size() <= 0) return;
 
 
-	glDeleteBuffers(1, &VAO);
+
+	chunkFlag = ChunkFlags::Built;
+	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
+
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
+	
 
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
 
 
-	glBufferData(GL_ARRAY_BUFFER, surfacePoints.size() * sizeof(decltype(surfacePoints[0])), &surfacePoints[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, surfacePoints.size() * sizeof(decltype(surfacePoints[0])), &(surfacePoints[0]), GL_STATIC_DRAW);
 
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, pos)));
 
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, norm)));
-
+	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(decltype(indices[0])), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(decltype(indices[0])), &(indices[0]), GL_STATIC_DRAW);
 	glBindVertexArray(0);
 
 	verticesCount = surfacePoints.size();
 	indicesCount = indices.size() * 3;
-
-	chunkFlag = ChunkFlags::Built;
 }
 
 void Chunk::mesh() {
 
-	calculateMesh();
-	//auto  meshTask = std::async(std::launch::deferred,&calculateMesh,this);
+	//calculateMesh();
+	if (chunkFlag == ChunkFlags::Empty) return;
+	meshTask = std::async(std::launch::async,&Chunk::calculateMesh,this);
 
 
 }
@@ -226,13 +231,14 @@ void Chunk::mesh() {
 
 void Chunk::draw(Shader& shader){
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-
+	if (meshTask.valid() && chunkFlag == ChunkFlags::Meshed) {
+		auto chunkMesh = meshTask.get();
+		buildBufferObjects(chunkMesh->surfacePoints,chunkMesh->indices);
+	}
 	if (chunkFlag != ChunkFlags::Built) return;
 	glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(chunkPos * ChunkSize));
 	shader.setMat4("model", model);
 	glBindVertexArray(VAO);
-	//glDrawArrays(GL_POINTS, 0, verticesCount);
 	glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, 0);
 	glBindVertexArray(0);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -249,6 +255,7 @@ void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, s
 }
 
 Chunk::~Chunk(){
+	std::cout << "Destroying Chunk\n";
 	glDeleteBuffers(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
@@ -256,7 +263,8 @@ Chunk::~Chunk(){
 }
 
 Chunk::Chunk(const glm::vec3& pos) : voxelArray(Empty), chunkPos(pos) {
-	
+
+	bool isEmpty = true;
 	for (int x = 0; x < ChunkSize; x++) {
 		for (int y = 0; y < ChunkSize; y++) {
 			for (int z = 0; z < ChunkSize; z++) {
@@ -264,6 +272,11 @@ Chunk::Chunk(const glm::vec3& pos) : voxelArray(Empty), chunkPos(pos) {
 				if (chunkPos.y != 0) continue;
 
 				Voxel& vox = getVoxel(glm::ivec3(x, y, z));
+
+
+				if ((rand() % 2) == 0) {
+					vox = Full;
+				}
 				if(y == 4) vox = Full;
 				
 				/*
@@ -279,11 +292,14 @@ Chunk::Chunk(const glm::vec3& pos) : voxelArray(Empty), chunkPos(pos) {
 					voxelArray.set(x, y, z, Full);
 				}
 				*/
-				
+				if (vox != Empty) isEmpty = false;
 				
 			}
 		}
 	}
+	
+
+	//chunkFlag = (isEmpty == true) ? ChunkFlags::Empty : ChunkFlags::Loaded;
 	chunkFlag = ChunkFlags::Loaded;
 }
 

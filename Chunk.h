@@ -12,7 +12,7 @@
 
 
 
-enum class ChunkFlags{Built,Loaded,Empty};
+enum class ChunkFlags{Built,Meshed,Loaded,Empty};
 
 struct Voxel {
 	uint8_t color;
@@ -26,6 +26,21 @@ struct Voxel {
 	}
 };
 
+struct ChunkVertex {
+	glm::vec3 pos;
+	glm::vec3 norm;
+};
+
+struct ChunkCube {
+	int64_t indice;
+	Voxel voxels[8];
+};
+
+struct ChunkMesh {
+	std::vector<ChunkVertex> surfacePoints;
+	std::vector<glm::ivec3> indices;
+
+};
 static Voxel Empty{ 0,100 };
 static Voxel Full{ 0xff,-100 };
 static Voxel Error{ 0,0 };
@@ -40,14 +55,16 @@ private:
 	uint32_t VAO = 0;
 	uint32_t VBO = 0;
 	uint32_t EBO = 0;
-	long int verticesCount = 0;
-	long int indicesCount = 0;
+	size_t verticesCount = 0;
+	size_t indicesCount = 0;
 
 	ChunkFlags chunkFlag = ChunkFlags::Empty;
 	std::weak_ptr<Chunk> chunkNeighbours[7];
-	std::future<void> meshTask;
-	//static const glm::ivec3 chunkNeighboursTable[6] =  { {1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1} };
-	void calculateMesh();
+	std::future<std::shared_ptr<ChunkMesh>> meshTask;
+	
+
+	std::shared_ptr<ChunkMesh> calculateMesh();
+	void buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices);
 public:
 	void mesh();
 	void setNeighbours(const glm::ivec3& pos, std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks);
@@ -55,6 +72,7 @@ public:
 
 	void draw(Shader& shader);
 	Chunk(const glm::vec3& pos);
+	Chunk() = delete;
 	~Chunk();
 	Chunk& operator=(const Chunk&) = delete;
 	Chunk(const Chunk&) = delete;

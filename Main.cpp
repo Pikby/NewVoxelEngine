@@ -58,7 +58,7 @@ private:
 	
 
 
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1920.0f / 1080.0f, 0.1f, 100.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1920.0f / 1080.0f, 0.1f, 1000.0f);
 		glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.0f, -10.0f),
 			glm::vec3(0.0f, 0.0f, 0.0f),
 			glm::vec3(0.0f, 1.0f, 0.0f));
@@ -85,7 +85,7 @@ private:
 		}
 		
 		std::cout << "test\n";
-		/*
+		
 		const int renderDistance = 20;
 		for (int x = -renderDistance; x < renderDistance; x++) {
 			for (int y = -renderDistance; y < renderDistance; y++) {
@@ -96,18 +96,8 @@ private:
 				}
 			}
 		}
-		*/
-		std::cout << "test2\n";
-		world.loadChunk(glm::ivec3(0));
-		world.loadChunk(glm::ivec3(-1, 0, 0));
-		world.loadChunk(glm::ivec3(1, 0, 0));
-		world.loadChunk(glm::ivec3(-1, 0, 0));
-		world.loadChunk(glm::ivec3(0, 0, -1));
-		world.loadChunk(glm::ivec3(0, 1, 0));
-		world.loadChunk(glm::ivec3(0, -1, 0));
-		world.loadChunk(glm::ivec3(-1));
-	
 		
+		std::cout << "test2\n";
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 		
@@ -128,6 +118,7 @@ private:
 			InputHandler::notify();
 
 			static bool flag = true;
+
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT) && flag) {
 				world.placeVoxel(Full, camera);
 				//flag = false;
@@ -172,6 +163,7 @@ int main() {
 
 	try {
 		app.run();
+
 	}
 
 	catch (const std::exception& e) {

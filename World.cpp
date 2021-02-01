@@ -58,7 +58,7 @@ std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
 	glm::vec3 pos = camera.Position;
 
 	const float stepSize = 0.2;
-	const int maxSteps = 1000;
+	const int maxSteps = 10000;
 
 	for (int i = 0; i < maxSteps; i++) {
 		glm::ivec3 voxPos = (pos + front * (i * stepSize));
@@ -90,17 +90,14 @@ void World::placeVoxel(Voxel vox,Camera& camera) {
 
 			if (vox.val > 0) {
 				lookingVox = vox;
-				loadChunk(glm::floor(glm::vec3(voxPos / glm::vec3(ChunkSize))));
+				loadNeighbouringChunks(voxPos);
 			}
 			else {
 				glm::vec3 newPos = voxPos - front * stepSize;
 				Voxel& nearVox = getVoxel(glm::floor(newPos));
 				nearVox = vox;
-	
-				glm::ivec3 chunkPos =  glm::floor(newPos / glm::vec3(ChunkSize));
-				glm::ivec3 localPos = glm::ivec3(glm::floor(newPos)) % glm::ivec3(ChunkSize);
-	
-				loadChunk(chunkPos);
+
+				loadNeighbouringChunks(newPos);
 			}
 			return;
 		}
@@ -108,17 +105,23 @@ void World::placeVoxel(Voxel vox,Camera& camera) {
 	}
 }
 
+
+
 void World::loadNeighbouringChunks(glm::ivec3 pos) {
 	glm::ivec3 chunkPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
-	/*
-	glm::ivec3 localPos = pos % glm::ivec3(ChunkSize);
-	static const glm::ivec3 checks[6] = { {1,0,0},{0,1,0},{0,0,1},{-1,0,0},{0,-1,0},{0,0,-1} };
+	glm::ivec3 localPos = glm::mod(glm::vec3(pos), glm::vec3(ChunkSize));
+
+	static const glm::ivec3 checks[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 	for (auto check : checks) {
-		if (glm::all(glm::greaterThanEqual(localPos,15*check))) {
-			loadChunk(chunkPos + check);
+		if (glm::all(glm::lessThanEqual(check-glm::ivec3(1),localPos))) {
+
+
+			loadChunk(chunkPos - check);
+		
 		}
+
 	}
-	*/
+	
 	loadChunk(chunkPos);
 }
 
