@@ -82,6 +82,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh() {
 				for (int i = 0; i < 8; i++) {
 					glm::ivec3 offset = curPos + offsets[i];
 					chunkCube.voxels[i] = fullVoxels.get(offset);
+	
 				}
 
 				bool sameSign = true;
@@ -131,7 +132,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh() {
 
 
 
-				chunkMesh->surfacePoints.push_back({ surfacePoint,norm });
+				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,chunkCube.voxels[0].color });
 
 				chunkCube.indice = chunkMesh->surfacePoints.size() - 1;
 				surfaceArray.set(curPos, chunkCube);
@@ -173,7 +174,6 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh() {
 		}
 	}
 
-	//return meshPair(surfacePoints,indices);
 	chunkFlag = ChunkFlags::Meshed;
 	return chunkMesh;
 
@@ -211,6 +211,9 @@ void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vec
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, norm)));
 	
+	glEnableVertexAttribArray(2);
+	glVertexAttribIPointer(2, 1, GL_SHORT, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, color)));
+
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(decltype(indices[0])), &(indices[0]), GL_STATIC_DRAW);
 	glBindVertexArray(0);
@@ -247,7 +250,7 @@ void Chunk::draw(Shader& shader){
 
 //All neighbours should exist in the chunktable before calling this function
 void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks) {
-	static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
+
 	for (int i = 0; i < 7; i++) {
 		glm::ivec3 offset = pos + chunkNeighboursTable[i];
 		chunkNeighbours[i] = chunks[offset];
@@ -255,7 +258,6 @@ void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, s
 }
 
 Chunk::~Chunk(){
-	std::cout << "Destroying Chunk\n";
 	glDeleteBuffers(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);

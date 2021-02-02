@@ -55,8 +55,6 @@ private:
 
 	void mainLoop() {
 		Shader modelShader("Model.fs","Model.vs");
-	
-
 
 		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1920.0f / 1080.0f, 0.1f, 1000.0f);
 		glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.0f, -10.0f),
@@ -84,20 +82,19 @@ private:
 			newVox = Full;
 		}
 		
-		std::cout << "test\n";
+
 		
-		const int renderDistance = 20;
+		const int renderDistance = 10;
 		for (int x = -renderDistance; x < renderDistance; x++) {
 			for (int y = -renderDistance; y < renderDistance; y++) {
 				for (int z = -renderDistance; z < renderDistance; z++) {
 					glm::ivec3 curPos = glm::ivec3(x, y, z);
-					//std::cout << glm::to_string(curPos) << "\n";
 					world.loadChunk(glm::ivec3(x, y, z));
 				}
 			}
 		}
 		
-		std::cout << "test2\n";
+		std::cout << "World rendered\n";
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 		
@@ -119,7 +116,7 @@ private:
 
 			static bool flag = true;
 
-			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT) && flag) {
+			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
 				world.placeVoxel(Full, camera);
 				//flag = false;
 			}
@@ -127,7 +124,7 @@ private:
 				flag = true;
 			}
 
-			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT) && flag) {
+			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
 				world.placeVoxel(Empty, camera);
 				//flag = false;
 			}
@@ -141,6 +138,7 @@ private:
 
 			chunkShader.use();
 			chunkShader.setMat4("view", view);
+			chunkShader.setVec3("cameraPos", camera.Position);
 			world.drawChunks(chunkShader);
 
 			/*

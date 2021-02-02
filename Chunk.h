@@ -15,7 +15,7 @@
 enum class ChunkFlags{Built,Meshed,Loaded,Empty};
 
 struct Voxel {
-	uint8_t color;
+	uint16_t color;
 	int8_t val;
 	bool operator==(Voxel& rhs) {
 		return color == rhs.color && val == rhs.val;
@@ -29,6 +29,7 @@ struct Voxel {
 struct ChunkVertex {
 	glm::vec3 pos;
 	glm::vec3 norm;
+	uint16_t color;
 };
 
 struct ChunkCube {
@@ -41,10 +42,11 @@ struct ChunkMesh {
 	std::vector<glm::ivec3> indices;
 
 };
-static Voxel Empty{ 0,100 };
-static Voxel Full{ 0xff,-100 };
+static Voxel Empty{ 0xf0f0,100 };
+static Voxel Full{ 0xf0f0,-100 };
 static Voxel Error{ 0,0 };
 
+static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 const int ChunkSize = 16;
 
 
