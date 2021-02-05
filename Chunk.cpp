@@ -174,34 +174,24 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh() {
 		}
 	}
 
-	chunkFlag = ChunkFlags::Meshed;
+
 	return chunkMesh;
 
 }
 
 void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices) {
-
-
-
 	if (surfacePoints.size() <= 0 || indices.size() <= 0) return;
 
-
-
-	chunkFlag = ChunkFlags::Built;
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
-
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
 	
-
 	glBindVertexArray(VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-
 
 	glBufferData(GL_ARRAY_BUFFER, surfacePoints.size() * sizeof(decltype(surfacePoints[0])), &(surfacePoints[0]), GL_STATIC_DRAW);
 
@@ -220,25 +210,32 @@ void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vec
 
 	verticesCount = surfacePoints.size();
 	indicesCount = indices.size() * 3;
+
+	chunkFlag = ChunkFlags::LoadedToGPU;
 }
 
 void Chunk::mesh() {
-
-	//calculateMesh();
+	chunkFlag = ChunkFlags::QueuedToMesh;
 	if (chunkFlag == ChunkFlags::Empty) return;
 	meshTask = std::async(std::launch::async,&Chunk::calculateMesh,this);
-
 
 }
 
 
 void Chunk::draw(Shader& shader){
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	if (meshTask.valid() && chunkFlag == ChunkFlags::Meshed) {
-		auto chunkMesh = meshTask.get();
-		buildBufferObjects(chunkMesh->surfacePoints,chunkMesh->indices);
+	if (meshTask.valid()) {
+
+		try {
+			auto chunkMesh = meshTask.get();
+			buildBufferObjects(chunkMesh->surfacePoints, chunkMesh->indices);
+		}
+		catch (...) {
+			return;
+		}
+	
 	}
-	if (chunkFlag != ChunkFlags::Built) return;
+	if (chunkFlag != ChunkFlags::LoadedToGPU) return;
 	glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(chunkPos * ChunkSize));
 	shader.setMat4("model", model);
 	glBindVertexArray(VAO);
@@ -248,7 +245,7 @@ void Chunk::draw(Shader& shader){
 }
 
 
-//All neighbours should exist in the chunktable before calling this function
+
 void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks) {
 
 	for (int i = 0; i < 7; i++) {
@@ -258,7 +255,8 @@ void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, s
 }
 
 Chunk::~Chunk(){
-	glDeleteBuffers(1, &VAO);
+	//std::cout << "deleting chunk\n" << glm::to_string(chunkPos) << "\n";
+	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
 
@@ -302,7 +300,7 @@ Chunk::Chunk(const glm::vec3& pos) : voxelArray(Empty), chunkPos(pos) {
 	
 
 	//chunkFlag = (isEmpty == true) ? ChunkFlags::Empty : ChunkFlags::Loaded;
-	chunkFlag = ChunkFlags::Loaded;
+	chunkFlag = ChunkFlags::LoadedInRAM;
 }
 
 Voxel& Chunk::getVoxel(const glm::ivec3& pos) {

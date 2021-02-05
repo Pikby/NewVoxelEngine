@@ -12,7 +12,7 @@
 
 
 
-enum class ChunkFlags{Built,Meshed,Loaded,Empty};
+enum class ChunkFlags{LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
 struct Voxel {
 	uint16_t color;
@@ -60,22 +60,33 @@ private:
 	size_t verticesCount = 0;
 	size_t indicesCount = 0;
 
-	ChunkFlags chunkFlag = ChunkFlags::Empty;
+
 	std::weak_ptr<Chunk> chunkNeighbours[7];
 	std::future<std::shared_ptr<ChunkMesh>> meshTask;
 	
-
+	//Takes the current chunk and all the surrounding voxels and returns a list of vertices and indices
 	std::shared_ptr<ChunkMesh> calculateMesh();
+
+	//Takes a list of vertices and indices and creates buffer objects for them
 	void buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices);
 public:
+	//Creates an async job to mesh the given chunk
 	void mesh();
+	std::atomic<ChunkFlags> chunkFlag = ChunkFlags::Empty;
+	//All neighbours should exist in the chunktable before calling this function, function finds all surrouding chunks and loads them
 	void setNeighbours(const glm::ivec3& pos, std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks);
 	Voxel& getVoxel(const glm::ivec3& po);
 
+	//Draws the given chunk with a shader, if the mesh is not valid/built function will return, otherwise it will automatically build the buffers
 	void draw(Shader& shader);
 	Chunk(const glm::vec3& pos);
-	Chunk() = delete;
 	~Chunk();
+
+	const glm::ivec3& getChunkPos(){
+		return chunkPos;
+	}
+
+	Chunk() = delete;
 	Chunk& operator=(const Chunk&) = delete;
 	Chunk(const Chunk&) = delete;
 

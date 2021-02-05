@@ -31,12 +31,43 @@ void World::loadChunk(const glm::ivec3& pos) {
 	newChunk->mesh();
 }
 
-void World::drawChunks(Shader& shader) {
-	for (auto chunk : chunks) {
-		chunk.second->draw(shader);
+int renderDistance = 20*ChunkSize;
+void World::drawChunks(Shader& shader, Camera& camera) {
+	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
+		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
+		if (magnitude > renderDistance) {
+			chunks.erase(chunk++);
+		}
+		else {
+			chunk->second->draw(shader);
+			++chunk;
+		}
+	}
+}
+
+void World::scanForChunks(const glm::vec3& pos) {
+	const int renderDistance = 10;
+	for (int x = -renderDistance; x < renderDistance; x++) {
+		for (int y = -renderDistance; y < renderDistance; y++) {
+			for (int z = -renderDistance; z < renderDistance; z++) {
+				glm::ivec3 curPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize))+glm::vec3(x, y, z);
+
+
+				if (!chunks.contains(curPos)) {
+					loadChunk(curPos);
+					continue;
+				}
+
+				auto chunk = chunks.at(curPos);
+				if(chunk->chunkFlag == ChunkFlags::LoadedInRAM ){
+					loadChunk(curPos);
+				}
+			}
+		}
 	}
 
 }
+
 
 Voxel& World::getVoxel(const glm::ivec3& pos) {
 	const glm::ivec3 chunkPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));

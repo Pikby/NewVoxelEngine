@@ -10,12 +10,24 @@
 class World {
 private:
 	std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>> chunks;
-public:
-	void loadChunk(const glm::ivec3& pos);
-	void drawChunks(Shader& shader);
-
+	
+	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(glm::ivec3 pos);
 	std::optional<glm::ivec3> findLookingVoxel(Camera& camera);
+public:
+	
+	//Makes sure all surrouding chunks are loaded, then requests the chunk to be meshed
+	void loadChunk(const glm::ivec3& pos);
+
+	//Draws all loaded chunks in the world
+	void drawChunks(Shader& shader, Camera& camera);
+
+	//Scans for chunks around position and unloads them 
+	void scanForChunks(const glm::vec3& pos);
+
+	//Returns a reference to a voxel in the world
 	Voxel& getVoxel(const glm::ivec3& pos);
+
+	//Takes a camera argument and attempts to place a voxel wherever the camera is looking
 	void placeVoxel(Voxel vox, Camera& camera);
 };

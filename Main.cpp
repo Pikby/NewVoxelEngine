@@ -52,6 +52,9 @@ private:
 	}
 
 
+	void drawLoop() {
+
+	}
 
 	void mainLoop() {
 		Shader modelShader("Model.fs","Model.vs");
@@ -130,17 +133,16 @@ private:
 			}
 			glClearColor(1, 0.19, 0.34, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			modelShader.use();
-			view = camera.GetViewMatrix();
-			modelShader.setMat4("view", view);
-			//model.Draw(modelShader);
-
+	
+			view = camera.getViewMatrix();
 
 			chunkShader.use();
 			chunkShader.setMat4("view", view);
 			chunkShader.setVec3("cameraPos", camera.Position);
-			world.drawChunks(chunkShader);
 
+			world.scanForChunks(camera.Position);
+			world.drawChunks(chunkShader,camera);
+			
 			/*
 			normShader.use();
 			normShader.setMat4("view", view);

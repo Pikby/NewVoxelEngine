@@ -43,7 +43,7 @@ void InputHandler::processMouseMovement(GLFWwindow* window, double xpos, double 
 	lastY = ypos;
 
 
-	camera.ProcessMouseMovement(xoffset, yoffset);
+	camera.processMouseMovement(xoffset, yoffset);
 
 }
 
@@ -72,16 +72,16 @@ void InputHandler::notify() {
 void InputHandler::handleAction(Action action) {
 	switch (action) {
 	case(Action::MoveForward):
-		camera.ProcessKeyboard(FORWARD, 0.1);
+		camera.processKeyboard(Camera_Movement::FORWARD, 0.1);
 		break;
 	case(Action::MoveBackwards):
-		camera.ProcessKeyboard(BACKWARD, 0.1);
+		camera.processKeyboard(Camera_Movement::BACKWARD, 0.1);
 		break;
 	case(Action::MoveLeft):
-		camera.ProcessKeyboard(LEFT, 0.1);
+		camera.processKeyboard(Camera_Movement::LEFT, 0.1);
 		break;
 	case(Action::MoveRight):
-		camera.ProcessKeyboard(RIGHT, 0.1);
+		camera.processKeyboard(Camera_Movement::RIGHT, 0.1);
 		break;
 	case(Action::PrimaryAction):
 		//std::cout << "left click\n";

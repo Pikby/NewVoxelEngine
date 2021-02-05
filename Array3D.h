@@ -77,4 +77,5 @@ public:
 	void reset(const T& value) {
 		fill(value);
 	}
+
 };
