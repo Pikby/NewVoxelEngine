@@ -59,7 +59,7 @@ private:
 	void mainLoop() {
 		Shader modelShader("Model.fs","Model.vs");
 
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1920.0f / 1080.0f, 0.1f, 1000.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
 		glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.0f, -10.0f),
 			glm::vec3(0.0f, 0.0f, 0.0f),
 			glm::vec3(0.0f, 1.0f, 0.0f));
@@ -73,20 +73,7 @@ private:
 		modelShader.setInt("objTexture", 0);
 		Model model("bunny.obj");
 
-		World world;
-		world.loadChunk(glm::ivec3(0));
-		world.getVoxel(glm::ivec3(7)) = Full;
-	
-
-		for (int i = 0; i < 60; i++) {
-			Voxel& vox = world.getVoxel(glm::ivec3(-30) + glm::ivec3(i));
-				vox = Full;
-			Voxel& newVox = world.getVoxel(glm::ivec3(0) + glm::ivec3(-i,i,i));
-			newVox = Full;
-		}
-		
-
-		
+		World world;		
 		const int renderDistance = 10;
 		for (int x = -renderDistance; x < renderDistance; x++) {
 			for (int y = -renderDistance; y < renderDistance; y++) {
@@ -113,6 +100,8 @@ private:
 
 		Camera& camera = InputHandler::getCamera();
 		while (!glfwWindowShouldClose(window)) {
+
+			world.scanForChunks(camera.Position);
 			glfwSwapBuffers(window);
 			glfwPollEvents();
 			InputHandler::notify();
@@ -133,14 +122,6 @@ private:
 			}
 			glClearColor(1, 0.19, 0.34, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	
-			view = camera.getViewMatrix();
-
-			chunkShader.use();
-			chunkShader.setMat4("view", view);
-			chunkShader.setVec3("cameraPos", camera.Position);
-
-			world.scanForChunks(camera.Position);
 			world.drawChunks(chunkShader,camera);
 			
 			/*
@@ -159,8 +140,6 @@ private:
 
 int main() {
 	MP3Instance app;
-
-
 	try {
 		app.run();
 

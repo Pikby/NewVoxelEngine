@@ -46,12 +46,23 @@ static Voxel Empty{ 0xf0f0,100 };
 static Voxel Full{ 0xf0f0,-100 };
 static Voxel Error{ 0,0 };
 
+//Table for the 7 chunk neighbours in the postive x,y,z directions respectively
 static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
+
+//Table for the 8 corners of a cube
+static const glm::ivec3 cubeCorners[8] = { {0,0,0},{1,0,0},{0,1,0},{1,1,0}, {0,0,1},{1,0,1},{0,1,1},{1,1,1} };
+
+//Table for the 12 edges of a cube with respect to the corners
+static const std::pair<int, int> cubeEdges[12] = { {0,1},{0,2},{1,3},{2,3},{4,5},{4,6},{5,7},{6,7},{0,4},{1,5},{2,6},{3,7} };
+
 const int ChunkSize = 16;
 
 
 class Chunk {
 private:
+
+
+	
 	CubeArray<Voxel, ChunkSize> voxelArray;
 	const glm::ivec3 chunkPos;
 	uint32_t VAO = 0;
@@ -63,9 +74,9 @@ private:
 
 	std::weak_ptr<Chunk> chunkNeighbours[7];
 	std::future<std::shared_ptr<ChunkMesh>> meshTask;
-	
+	std::shared_future<void> buildTask;
 	//Takes the current chunk and all the surrounding voxels and returns a list of vertices and indices
-	std::shared_ptr<ChunkMesh> calculateMesh();
+	std::shared_ptr<ChunkMesh> calculateMesh(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
 
 	//Takes a list of vertices and indices and creates buffer objects for them
 	void buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices);
@@ -79,6 +90,10 @@ public:
 
 	//Draws the given chunk with a shader, if the mesh is not valid/built function will return, otherwise it will automatically build the buffers
 	void draw(Shader& shader);
+
+	void generateChunk();
+
+	bool hasMesh();
 	Chunk(const glm::vec3& pos);
 	~Chunk();
 

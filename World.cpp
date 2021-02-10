@@ -10,8 +10,6 @@
 #include "Chunk.h"
 #include "Camera.h"
 
-
-
 #include <optional>
 
 void World::loadChunk(const glm::ivec3& pos) {
@@ -29,16 +27,28 @@ void World::loadChunk(const glm::ivec3& pos) {
 	auto newChunk = chunks.at(pos);
 	newChunk->setNeighbours(pos,chunks);
 	newChunk->mesh();
+
 }
 
 int renderDistance = 20*ChunkSize;
-void World::drawChunks(Shader& shader, Camera& camera) {
+void World::drawChunks(Shader& shader,const Camera& camera) {
+
+	shader.use();
+	shader.setMat4("view", camera.getViewMatrix());
+	shader.setVec3("cameraPos", camera.Position);
 	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
 		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
 		if (magnitude > renderDistance) {
-			chunks.erase(chunk++);
+			//Only delete the chunk if no other thread has it in use
+			if (chunk->second.use_count() == 1) {
+				chunks.erase(chunk++);
+			}
+			else {
+				chunk++;
+			}
+
 		}
-		else {
+		else{
 			chunk->second->draw(shader);
 			++chunk;
 		}
@@ -59,7 +69,7 @@ void World::scanForChunks(const glm::vec3& pos) {
 				}
 
 				auto chunk = chunks.at(curPos);
-				if(chunk->chunkFlag == ChunkFlags::LoadedInRAM ){
+				if(!(chunk->hasMesh())){
 					loadChunk(curPos);
 				}
 			}
@@ -112,7 +122,7 @@ void World::placeVoxel(Voxel vox,Camera& camera) {
 	glm::vec3 pos = camera.Position;
 
 	const float stepSize = 0.1;
-	const int maxSteps = 100;
+	const int maxSteps = 10000;
 
 	for (int i = 0; i < maxSteps; i++) {
 		glm::vec3 voxPos = (pos + front * (i * stepSize));
@@ -145,12 +155,8 @@ void World::loadNeighbouringChunks(glm::ivec3 pos) {
 	static const glm::ivec3 checks[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 	for (auto check : checks) {
 		if (glm::all(glm::lessThanEqual(check-glm::ivec3(1),localPos))) {
-
-
 			loadChunk(chunkPos - check);
-		
 		}
-
 	}
 	
 	loadChunk(chunkPos);

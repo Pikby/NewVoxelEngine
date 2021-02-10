@@ -20,7 +20,7 @@ public:
 	void loadChunk(const glm::ivec3& pos);
 
 	//Draws all loaded chunks in the world
-	void drawChunks(Shader& shader, Camera& camera);
+	void drawChunks(Shader& shader,const Camera& camera);
 
 	//Scans for chunks around position and unloads them 
 	void scanForChunks(const glm::vec3& pos);
