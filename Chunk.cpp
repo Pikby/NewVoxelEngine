@@ -8,11 +8,13 @@
 
 #include "Shader.h"
 #include "Array3D.h"
+#include "Perlin.h"
 #include <vector>
 
 #include "Chunk.h";
 #include <optional>
 
+#define GLM_FORCE_AVX
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
@@ -21,12 +23,12 @@ template <typename T> int sign(T val) {
 }
 
 
-
-
 std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours) {
 
 	auto fullVoxels = std::make_unique<CubeArray<Voxel, ChunkSize + 2>>();
-
+	if (buildTask.valid()){
+		buildTask.wait();
+	}
 
 	for (auto neigh : chunkNeighbours) {
 		if (neigh->buildTask.valid()){
@@ -82,9 +84,20 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 				glm::ivec3 curPos(x, y, z);
 				ChunkCube chunkCube;
 
+				int count = 1;
+				glm::vec4 color;
 				for (int i = 0; i < 8; i++) {
 					glm::ivec3 offset = curPos + cubeCorners[i];
 					chunkCube.voxels[i] = fullVoxels->get(offset);
+					if (chunkCube.voxels[i].val < 0) {
+						if (count == 1) {
+							color = chunkCube.voxels[i].color.getFloatColor();
+						}
+						else {
+							//color = (color + chunkCube.voxels[i].color) / 2;
+						}
+						count++;
+					}
 				}
 
 				bool sameSign = true;
@@ -97,8 +110,8 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 				if (sameSign) continue;
 
 		
-				glm::vec3 surfacePoint;
-				int count = 1;
+				glm::vec3 surfacePoint(0);
+				count = 1;
 				for (int i = 0; i < 12; i++) {
 					Voxel vox1 = chunkCube.voxels[cubeEdges[i].first];
 					Voxel vox2 = chunkCube.voxels[cubeEdges[i].second];
@@ -110,6 +123,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 
 					glm::vec3 pf = (1 - alpha) * p1 + alpha * p2;
 					surfacePoint += (pf - surfacePoint) / static_cast<float>(count);
+	
 					count++;
 				}
 
@@ -125,7 +139,9 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 					norm = glm::normalize(norm);
 				}
 
-				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,chunkCube.voxels[0].color });
+				//std::cout << glm::to_string(color) << "\n";
+				//std::cout << Color(color).getBinaryColor() << "\n";
+				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,static_cast<uint16_t>(Color(color).getBinaryColor()) });
 
 				chunkCube.indice = chunkMesh->surfacePoints.size() - 1;
 				surfaceArray.set(curPos, chunkCube);
@@ -272,34 +288,27 @@ Chunk::~Chunk(){
 
 }
 
+PerlinNoise perlinNoise;
 void Chunk::generateChunk() {
 	bool isEmpty = true;
 	for (int x = 0; x < ChunkSize; x++) {
-		for (int y = 0; y < ChunkSize; y++) {
-			for (int z = 0; z < ChunkSize; z++) {
-				if (chunkPos.y != 0) continue;
+		for (int z = 0; z < ChunkSize; z++) {
+			glm::vec3 realCoords = glm::vec3(x, 0, z) + glm::vec3(chunkPos * ChunkSize);
+			double height = perlinNoise.octavePerlin((glm::vec3(realCoords.x, 0, realCoords.z)) / 5000.0f, 8, 16);
+			for (int y = 0; y < ChunkSize; y++) {
+
+				//if (chunkPos.y != 0) continue;
+				glm::vec3 realCoords = glm::vec3(x, y,z) + glm::vec3(chunkPos * ChunkSize);
+	
+				int heightI = height * 50;
 				Voxel& vox = getVoxel(glm::ivec3(x, y, z));
-
-
-				if ((rand() % 2) == 0) {
+				//std::cout << heightI << glm::to_string(realCoords) << "\n";
+				if (realCoords.y < heightI) {
+					//std::cout << "placing" << glm::to_string(realCoords) << "\n";
 					vox = Full;
 				}
-				if (y == 4) vox = Full;
 
-				/*
-				if ((std::pow((x-8),2) + std::pow((y-8),2) + std::pow((z-8),2)) < std::pow(4,2)) {
-					voxelArray.set(x, y, z, Full);
-				}
-				*/
-
-
-				/*
-
-				if (abs(x - 8) < 4 && abs(y - 8) < 4 && abs(z - 8) < 4) {
-					voxelArray.set(x, y, z, Full);
-				}
-				*/
-				if (vox != Empty) isEmpty = false;
+				//if (vox != Empty) isEmpty = false;
 
 			}
 		}

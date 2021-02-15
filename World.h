@@ -14,6 +14,8 @@ private:
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(glm::ivec3 pos);
 	std::optional<glm::ivec3> findLookingVoxel(Camera& camera);
+	inline glm::ivec3 getChunkPos(const glm::vec3& pos);
+	inline glm::ivec3 getLocalPos(const glm::vec3& pos);
 public:
 	
 	//Makes sure all surrouding chunks are loaded, then requests the chunk to be meshed

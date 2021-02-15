@@ -12,8 +12,14 @@
 
 #include <optional>
 
+glm::ivec3 World::getChunkPos(const glm::vec3& pos) {
+	return glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
+}
+glm::ivec3 World::getLocalPos(const glm::vec3& pos) {
+	return glm::mod(glm::vec3(pos), glm::vec3(ChunkSize));
+}
+
 void World::loadChunk(const glm::ivec3& pos) {
-	static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 	if (!chunks.contains(pos)) {
 		chunks.insert({ pos, std::make_shared<Chunk>(pos) });
 	}
@@ -60,7 +66,7 @@ void World::scanForChunks(const glm::vec3& pos) {
 	for (int x = -renderDistance; x < renderDistance; x++) {
 		for (int y = -renderDistance; y < renderDistance; y++) {
 			for (int z = -renderDistance; z < renderDistance; z++) {
-				glm::ivec3 curPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize))+glm::vec3(x, y, z);
+				glm::ivec3 curPos = glm::vec3(getChunkPos(pos))+glm::vec3(x, y, z);
 
 
 				if (!chunks.contains(curPos)) {
@@ -80,8 +86,8 @@ void World::scanForChunks(const glm::vec3& pos) {
 
 
 Voxel& World::getVoxel(const glm::ivec3& pos) {
-	const glm::ivec3 chunkPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
-	const glm::ivec3 localPos = glm::mod(glm::vec3(pos),glm::vec3(ChunkSize));
+	const glm::ivec3 chunkPos = getChunkPos(pos);
+	const glm::ivec3 localPos = getLocalPos(pos);
 	//std::cout << glm::to_string(pos) << ":" << glm::to_string(chunkPos) << ":" << glm::to_string(localPos) << "\n";
 
 	
@@ -149,8 +155,8 @@ void World::placeVoxel(Voxel vox,Camera& camera) {
 
 
 void World::loadNeighbouringChunks(glm::ivec3 pos) {
-	glm::ivec3 chunkPos = glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
-	glm::ivec3 localPos = glm::mod(glm::vec3(pos), glm::vec3(ChunkSize));
+	glm::ivec3 chunkPos = getChunkPos(pos);
+	glm::ivec3 localPos = getLocalPos(pos);
 
 	static const glm::ivec3 checks[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 	for (auto check : checks) {

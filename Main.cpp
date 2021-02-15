@@ -109,7 +109,7 @@ private:
 			static bool flag = true;
 
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
-				world.placeVoxel(Full, camera);
+				world.placeVoxel(Temp, camera);
 				//flag = false;
 			}
 			else {

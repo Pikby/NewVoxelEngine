@@ -7,15 +7,16 @@
 #include <vector>
 #include <unordered_map>
 #include <future>
+
 #include "Shader.h"
 #include "Array3D.h"
-
+#include "Color.h"
 
 
 enum class ChunkFlags{LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
 struct Voxel {
-	uint16_t color;
+	Color color;
 	int8_t val;
 	bool operator==(Voxel& rhs) {
 		return color == rhs.color && val == rhs.val;
@@ -42,8 +43,9 @@ struct ChunkMesh {
 	std::vector<glm::ivec3> indices;
 
 };
-static Voxel Empty{ 0xf0f0,100 };
-static Voxel Full{ 0xf0f0,-100 };
+static Voxel Empty{ 0xf000,100 };
+static Voxel Full{ 0xf0f0,-100 };		 
+static Voxel Temp{ 0xff00,-10000 };
 static Voxel Error{ 0,0 };
 
 //Table for the 7 chunk neighbours in the postive x,y,z directions respectively
@@ -53,16 +55,13 @@ static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1
 static const glm::ivec3 cubeCorners[8] = { {0,0,0},{1,0,0},{0,1,0},{1,1,0}, {0,0,1},{1,0,1},{0,1,1},{1,1,1} };
 
 //Table for the 12 edges of a cube with respect to the corners
-static const std::pair<int, int> cubeEdges[12] = { {0,1},{0,2},{1,3},{2,3},{4,5},{4,6},{5,7},{6,7},{0,4},{1,5},{2,6},{3,7} };
+static const std::pair<int, int> cubeEdges[12] = { {0,1}, {0,2}, {1,3}, {2,3}, {4,5}, {4,6}, {5,7}, {6,7}, {0,4}, {1,5}, {2,6}, {3,7} };
 
 const int ChunkSize = 16;
 
 
 class Chunk {
 private:
-
-
-	
 	CubeArray<Voxel, ChunkSize> voxelArray;
 	const glm::ivec3 chunkPos;
 	uint32_t VAO = 0;
@@ -70,7 +69,6 @@ private:
 	uint32_t EBO = 0;
 	size_t verticesCount = 0;
 	size_t indicesCount = 0;
-
 
 	std::weak_ptr<Chunk> chunkNeighbours[7];
 	std::future<std::shared_ptr<ChunkMesh>> meshTask;
@@ -80,10 +78,11 @@ private:
 
 	//Takes a list of vertices and indices and creates buffer objects for them
 	void buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices);
+	std::atomic<ChunkFlags> chunkFlag = ChunkFlags::Empty;
 public:
 	//Creates an async job to mesh the given chunk
 	void mesh();
-	std::atomic<ChunkFlags> chunkFlag = ChunkFlags::Empty;
+
 	//All neighbours should exist in the chunktable before calling this function, function finds all surrouding chunks and loads them
 	void setNeighbours(const glm::ivec3& pos, std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks);
 	Voxel& getVoxel(const glm::ivec3& po);
@@ -91,6 +90,7 @@ public:
 	//Draws the given chunk with a shader, if the mesh is not valid/built function will return, otherwise it will automatically build the buffers
 	void draw(Shader& shader);
 
+	//fills out VoxelArray using randomly generated algorithm
 	void generateChunk();
 
 	bool hasMesh();
