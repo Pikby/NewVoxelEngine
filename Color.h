@@ -2,24 +2,29 @@
 #include <iostream>
 #include <cstdint>
 #include <glm/glm.hpp>
+
+static const int byteCount = 4;
+static const int maxVal = pow(2,byteCount) - 1;
+static const int offset = byteCount * (8 / 4);
+
 class Color {
 private:
-	uint16_t color2byte;
-	uint16_t floatColorToByte(const glm::vec4& color) {
-		return int(color.r * 15) & 0xF  | ((int(color.g *15) & 0xF) << 4) | (((int(color.b) * 15) & 0xF) << 8) | (((int(color.a) * 15) & 0xF) << 12);
+	uint32_t color2byte;
+	uint32_t floatColorToByte(const glm::vec4& color) const {
+		return (int(color.r * maxVal) & maxVal) | ((int(color.g * maxVal) & maxVal) << offset) | ((int(color.b * maxVal) & maxVal) << offset*2) | ((int(color.a * maxVal) & maxVal) << offset*3);
 	}
-	glm::vec4 byteColorToFloat(const uint16_t color) {
+	glm::vec4 byteColorToFloat (const uint32_t color) const {
 		glm::vec4 ret;
-		ret.r = (color & 0xF)/float(0xF);
-		ret.g = ((color >> 4) & 0xF) / float(0xF);
-		ret.b = ((color >> 8) & 0xF) / float(0xF);
-		ret.a = ((color >> 12) & 0xF) / float(0xF);
+		ret.r = (color & maxVal)/float(maxVal);
+		ret.g = ((color >> offset) & maxVal) / float(maxVal);
+		ret.b = ((color >> offset*2) & maxVal) / float(maxVal);
+		ret.a = ((color >> offset*3) & maxVal) / float(maxVal);
 		return ret;
 	}
 
 public:
 	Color() : color2byte(0){}
-	Color(uint16_t color) : color2byte(color){}
+	Color(uint32_t color) : color2byte(color){}
 	Color(const glm::vec3& color) {
 		color2byte = floatColorToByte(glm::vec4(color, 1));
 	}
@@ -27,19 +32,19 @@ public:
 	Color(const glm::vec4& color) {
 		color2byte = floatColorToByte(color);
 	}
-	uint16_t getBinaryColor(){
+	uint32_t getBinaryColor() const{
 		return color2byte;
 	}
 
-	glm::vec4 getFloatColor() {
+	glm::vec4 getFloatColor() const{
 		return byteColorToFloat(color2byte);
 	}
 
-	bool operator==(Color& rhs) {
+	bool operator==(Color& rhs) const {
 		return rhs.color2byte == this->color2byte;
 	}
 
-	bool operator!=(Color& rhs) {
+	bool operator!=(Color& rhs) const {
 		return this->operator==(rhs);
 	}
 

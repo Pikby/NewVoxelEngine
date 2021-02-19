@@ -20,6 +20,7 @@ public:
 	}
 
 private:
+
 	GLFWwindow* window;
 	void makeWindow() {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -65,7 +66,7 @@ private:
 			glm::vec3(0.0f, 1.0f, 0.0f));
 
 		//view = camera.GetViewMatrix();
-		glm::mat4 modelMat = glm::scale(glm::mat4(1), glm::vec3(0.01));
+		glm::mat4 modelMat = glm::scale(glm::mat4(1.f), glm::vec3(0.01f));
 		modelShader.use();
 		modelShader.setMat4("projection", projection);
 		modelShader.setMat4("view", view);
@@ -100,6 +101,11 @@ private:
 
 		Camera& camera = InputHandler::getCamera();
 		while (!glfwWindowShouldClose(window)) {
+			int width, height;
+			glfwGetWindowSize(window,&width, &height);
+			projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
+			chunkShader.use();
+			chunkShader.setMat4("projection", projection);
 
 			world.scanForChunks(camera.Position);
 			glfwSwapBuffers(window);
@@ -120,7 +126,7 @@ private:
 				world.placeVoxel(Empty, camera);
 				//flag = false;
 			}
-			glClearColor(1, 0.19, 0.34, 1.0f);
+			glClearColor(0.9, 0.9, 0.9, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			world.drawChunks(chunkShader,camera);
 			

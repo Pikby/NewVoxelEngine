@@ -12,10 +12,10 @@
 
 #include <optional>
 
-glm::ivec3 World::getChunkPos(const glm::vec3& pos) {
+inline glm::ivec3 World::getChunkPos(const glm::vec3& pos) {
 	return glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
 }
-glm::ivec3 World::getLocalPos(const glm::vec3& pos) {
+inline glm::ivec3 World::getLocalPos(const glm::vec3& pos) {
 	return glm::mod(glm::vec3(pos), glm::vec3(ChunkSize));
 }
 
@@ -36,17 +36,19 @@ void World::loadChunk(const glm::ivec3& pos) {
 
 }
 
-int renderDistance = 20*ChunkSize;
+int renderDistance = 30*ChunkSize;
 void World::drawChunks(Shader& shader,const Camera& camera) {
 
 	shader.use();
 	shader.setMat4("view", camera.getViewMatrix());
 	shader.setVec3("cameraPos", camera.Position);
+	globalLighting.setShaderUniforms(shader);
+
 	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
 		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
 		if (magnitude > renderDistance) {
 			//Only delete the chunk if no other thread has it in use
-			if (chunk->second.use_count() == 1) {
+			if ((chunk->second.use_count() == 1) && chunk->second->safeToDelete())  {
 				chunks.erase(chunk++);
 			}
 			else {
@@ -59,10 +61,18 @@ void World::drawChunks(Shader& shader,const Camera& camera) {
 			++chunk;
 		}
 	}
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_CULL_FACE);
+	for (auto chunk : chunks ) {
+		chunk.second->drawTranslucent(shader);
+	}
+	glEnable(GL_CULL_FACE);
 }
 
 void World::scanForChunks(const glm::vec3& pos) {
-	const int renderDistance = 10;
+	const int renderDistance = 12;
 	for (int x = -renderDistance; x < renderDistance; x++) {
 		for (int y = -renderDistance; y < renderDistance; y++) {
 			for (int z = -renderDistance; z < renderDistance; z++) {
@@ -85,17 +95,16 @@ void World::scanForChunks(const glm::vec3& pos) {
 }
 
 
-Voxel& World::getVoxel(const glm::ivec3& pos) {
+VoxelKey& World::getVoxel(const glm::ivec3& pos) {
 	const glm::ivec3 chunkPos = getChunkPos(pos);
 	const glm::ivec3 localPos = getLocalPos(pos);
-	//std::cout << glm::to_string(pos) << ":" << glm::to_string(chunkPos) << ":" << glm::to_string(localPos) << "\n";
 
 	
 	if (!chunks.contains(chunkPos)) {
 		loadChunk(chunkPos);
 	}
 
-	Voxel& vox = chunks[chunkPos]->getVoxel(localPos);
+	VoxelKey& vox = chunks[chunkPos]->getVoxel(localPos);
 	return vox;
 }
 
@@ -109,12 +118,10 @@ std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
 
 	for (int i = 0; i < maxSteps; i++) {
 		glm::ivec3 voxPos = (pos + front * (i * stepSize));
-		Voxel& vox = getVoxel(voxPos);
+		Voxel vox = VoxelLookup[getVoxel(voxPos)];
 		if (vox.val < 0)
 		{
-			//std::cout << "Found " << glm::to_string(glm::ivec3(pos + front * (i * stepSize)));
 			return voxPos;
-		
 		}
 
 	}
@@ -123,7 +130,7 @@ std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
 	return {};
 }
 
-void World::placeVoxel(Voxel vox,Camera& camera) {
+void World::placeVoxel(VoxelKey vox,Camera& camera) {
 	glm::vec3 front = camera.Front;
 	glm::vec3 pos = camera.Position;
 
@@ -132,16 +139,17 @@ void World::placeVoxel(Voxel vox,Camera& camera) {
 
 	for (int i = 0; i < maxSteps; i++) {
 		glm::vec3 voxPos = (pos + front * (i * stepSize));
-		Voxel& lookingVox = getVoxel(glm::floor(voxPos));
-		if (lookingVox.val < 0) {
+		VoxelKey& lookingVox = getVoxel(glm::floor(voxPos));
+		
+		if (VoxelLookup[lookingVox].val < 0) {
 
-			if (vox.val > 0) {
+			if (VoxelLookup[vox].val > 0) {
 				lookingVox = vox;
 				loadNeighbouringChunks(voxPos);
 			}
 			else {
 				glm::vec3 newPos = voxPos - front * stepSize;
-				Voxel& nearVox = getVoxel(glm::floor(newPos));
+				VoxelKey& nearVox = getVoxel(glm::floor(newPos));
 				nearVox = vox;
 
 				loadNeighbouringChunks(newPos);
@@ -158,8 +166,8 @@ void World::loadNeighbouringChunks(glm::ivec3 pos) {
 	glm::ivec3 chunkPos = getChunkPos(pos);
 	glm::ivec3 localPos = getLocalPos(pos);
 
-	static const glm::ivec3 checks[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
-	for (auto check : checks) {
+
+	for (auto check : chunkNeighboursTable) {
 		if (glm::all(glm::lessThanEqual(check-glm::ivec3(1),localPos))) {
 			loadChunk(chunkPos - check);
 		}

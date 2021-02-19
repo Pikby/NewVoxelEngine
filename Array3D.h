@@ -46,6 +46,8 @@ public:
 
 	CubeArray& operator=(const CubeArray& rhs) {
 		copy(rhs);
+
+		return this;
 	}
 
 	void set(const glm::ivec3& pos,const T& val) {
@@ -66,6 +68,20 @@ public:
 		return cubeArray[getArrayLocation(x, y, z)];
 	}
 
+	bool isAllSame() {
+		T val = get(0, 0, 0);
+		for (int x = 0; x < arrSize; x++) {
+			for (int y = 0; y < arrSize; y++) {
+				for (int z = 0; z < arrSize; z++) {
+					if (get(x, y, z) != val) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
 	T& get(const glm::ivec3& pos) {
 		return get(pos.x, pos.y, pos.z);
 	}
@@ -78,4 +94,7 @@ public:
 		fill(value);
 	}
 
+	T* data() {
+		return cubeArray;
+	}
 };

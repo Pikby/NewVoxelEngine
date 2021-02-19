@@ -1,16 +1,20 @@
 #pragma once
-#include "Chunk.h"
-#include "Camera.h"
+
 #include <map>
 #include <unordered_map>
 #include <memory>
 #include <optional>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
+
+#include "Chunk.h"
+#include "Camera.h"
+#include "GlobalLighting.h"
 class World {
 private:
 	std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>> chunks;
-	
+	GlobaLighting globalLighting;
+
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(glm::ivec3 pos);
 	std::optional<glm::ivec3> findLookingVoxel(Camera& camera);
@@ -28,8 +32,8 @@ public:
 	void scanForChunks(const glm::vec3& pos);
 
 	//Returns a reference to a voxel in the world
-	Voxel& getVoxel(const glm::ivec3& pos);
+	VoxelKey& getVoxel(const glm::ivec3& pos);
 
 	//Takes a camera argument and attempts to place a voxel wherever the camera is looking
-	void placeVoxel(Voxel vox, Camera& camera);
+	void placeVoxel(VoxelKey vox, Camera& camera);
 };

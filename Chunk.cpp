@@ -1,3 +1,8 @@
+
+#include <iostream>>
+#include <FastNoise/FastNoise.h>
+
+
 #include <cstdint>
 #include <cmath>
 #include <glm/glm.hpp>
@@ -6,32 +11,34 @@
 #include <future>
 #include <array>
 
-#include "Shader.h"
-#include "Array3D.h"
-#include "Perlin.h"
-#include <vector>
-
-#include "Chunk.h";
-#include <optional>
 
 #define GLM_FORCE_AVX
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
+
+#include <vector>
+#include <optional>
+
+#include "Shader.h"
+#include "Array3D.h"
+//#include "Perlin.h"
+#include "Chunk.h";
+
+
 
 template <typename T> int sign(T val) {
 	return (T(0) < val) - (val < T(0));
 }
 
 
-std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours) {
-
-	auto fullVoxels = std::make_unique<CubeArray<Voxel, ChunkSize + 2>>();
-	if (buildTask.valid()){
+auto Chunk::getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours) {
+	auto fullVoxels = std::make_shared<CubeArray<VoxelKey, ChunkSize + 2>>();
+	if (buildTask.valid()) {
 		buildTask.wait();
 	}
 
 	for (auto neigh : chunkNeighbours) {
-		if (neigh->buildTask.valid()){
+		if (neigh->buildTask.valid()) {
 			neigh->buildTask.wait();
 		}
 	}
@@ -50,9 +57,10 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 				bool isOutsideChunk = false;
 				for (int j = 0; j < 7; j++) {
 					//if (glm::all(glm::greaterThanEqual(curPos, glm::ivec3(ChunkSize * chunkNeighboursTable[j])))) { slow on cpu profiler
-					if(curPos.x >= ChunkSize * chunkNeighboursTable[j].x && curPos.y >= ChunkSize * chunkNeighboursTable[j].y && curPos.z >= ChunkSize * chunkNeighboursTable[j].z){
+					if (curPos.x >= ChunkSize * chunkNeighboursTable[j].x && curPos.y >= ChunkSize * chunkNeighboursTable[j].y && curPos.z >= ChunkSize * chunkNeighboursTable[j].z) {
 						if (auto neigh = chunkNeighbours[j]) {
-							fullVoxels->set(curPos, neigh->getVoxel(curPos - glm::ivec3(ChunkSize * chunkNeighboursTable[j])));
+							VoxelKey vox = neigh->getVoxel(curPos - glm::ivec3(ChunkSize * chunkNeighboursTable[j]));
+							fullVoxels->set(curPos, vox);
 							isOutsideChunk = true;
 							break;
 						}
@@ -70,13 +78,32 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 			}
 		}
 	}
+	return fullVoxels;
+}
+
+std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>> Chunk::getAllMeshes(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours) {
+
+	auto relevantVoxels = getAllRelevantVoxels(chunkNeighbours);
+	return std::make_pair(calculateMesh(relevantVoxels, VoxelRenderStyle::Opaque), calculateMesh(relevantVoxels, VoxelRenderStyle::Translucent));
+}
+
+
+std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelKey, ChunkSize + 2>> fullVoxels, VoxelRenderStyle style) {
+	
+
+	auto chunkMesh = std::make_shared<ChunkMesh>();
+
+	//Early check to see if meshing can be skipped
+	if (fullVoxels->isAllSame()) {
+		return chunkMesh;
+	}
 
 	//Moving some memory to the heap to help stop stack overflow
 	auto surfaceArrayPtr = std::make_unique<CubeArray<ChunkCube, ChunkSize + 2>>();
 	auto& surfaceArray = *(surfaceArrayPtr.get());
 	surfaceArray.reset({ -1 });
 
-	auto chunkMesh = std::make_shared<ChunkMesh>();
+
 	//Using the locally cached voxels find all the surface points
 	for (int x = 0; x < ChunkSize + 1; x++) {
 		for (int y = 0; y < ChunkSize + 1; y++) {
@@ -88,33 +115,55 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 				glm::vec4 color;
 				for (int i = 0; i < 8; i++) {
 					glm::ivec3 offset = curPos + cubeCorners[i];
-					chunkCube.voxels[i] = fullVoxels->get(offset);
-					if (chunkCube.voxels[i].val < 0) {
-						if (count == 1) {
-							color = chunkCube.voxels[i].color.getFloatColor();
-						}
-						else {
-							//color = (color + chunkCube.voxels[i].color) / 2;
-						}
-						count++;
+
+					const VoxelKey key = fullVoxels->get(offset);
+					const Voxel& vox = VoxelLookup[key];
+					if (style == VoxelRenderStyle::Opaque && vox.color.a != 1) {
+						chunkCube.voxels[i] = VoxelTypes::Empty;
 					}
+					else {
+						chunkCube.voxels[i] = fullVoxels->get(offset);
+						if (vox.val < 0) {
+							if (count == 1) {
+								color = VoxelLookup[chunkCube.voxels[i]].color;
+							}
+							else {
+								//color = (color + chunkCube.voxels[i].color) / 2;
+							}
+							count++;
+						}
+					}
+
 				}
 
+
+			
 				bool sameSign = true;
 				for (int i = 0; i < 7; i++) {
-					if (sign(chunkCube.voxels[i].val) != sign(chunkCube.voxels[i + 1].val)) {
-						sameSign = false;
-						break;
+					const Voxel& vox1 = VoxelLookup[chunkCube.voxels[i]];
+					const Voxel& vox2 = VoxelLookup[chunkCube.voxels[i + 1]];
+					if (style == VoxelRenderStyle::Opaque)
+					{
+						if ((sign(vox1.val) != sign(vox2.val))) {
+							sameSign = false;
+							break;
+						}
+					}
+					else {
+						if ((sign(vox1.val) != sign(vox2.val)) && (vox1.color.a != vox2.color.a)) {
+							sameSign = false;
+							break;
+						}
 					}
 				}
 				if (sameSign) continue;
 
-		
+
 				glm::vec3 surfacePoint(0);
 				count = 1;
 				for (int i = 0; i < 12; i++) {
-					Voxel vox1 = chunkCube.voxels[cubeEdges[i].first];
-					Voxel vox2 = chunkCube.voxels[cubeEdges[i].second];
+					Voxel vox1 = VoxelLookup[chunkCube.voxels[cubeEdges[i].first]];
+					Voxel vox2 = VoxelLookup[chunkCube.voxels[cubeEdges[i].second]];
 					if (sign(vox1.val) == sign(vox2.val)) continue;
 					float alpha = vox1.val / static_cast<float>(vox1.val - vox2.val);
 
@@ -123,28 +172,28 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 
 					glm::vec3 pf = (1 - alpha) * p1 + alpha * p2;
 					surfacePoint += (pf - surfacePoint) / static_cast<float>(count);
-	
+
 					count++;
 				}
 
 				static const glm::ivec3 dir[4] = { {0,1,8},{3,2,9},{4,5,10},{7,6,11} };
 				glm::vec3 norm(0);
 				for (int i = 0; i < 4; i++) {
-					norm += glm::vec3(chunkCube.voxels[cubeEdges[dir[i].x].second].val - chunkCube.voxels[cubeEdges[dir[i].x].first].val,
-						chunkCube.voxels[cubeEdges[dir[i].y].second].val - chunkCube.voxels[cubeEdges[dir[i].y].first].val,
-						chunkCube.voxels[cubeEdges[dir[i].z].second].val - chunkCube.voxels[cubeEdges[dir[i].z].first].val);
+					norm += glm::vec3(VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].x].second]].val - VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].x].first]].val,
+						VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].y].second]].val - VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].y].first]].val,
+						VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].z].second]].val - VoxelLookup[chunkCube.voxels[cubeEdges[dir[i].z].first]].val);
 				}
 
 				if (norm != glm::vec3(0)) {
 					norm = glm::normalize(norm);
 				}
 
-				//std::cout << glm::to_string(color) << "\n";
-				//std::cout << Color(color).getBinaryColor() << "\n";
-				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,static_cast<uint16_t>(Color(color).getBinaryColor()) });
+				uint32_t compressedColor = static_cast<uint32_t>(Color(color).getBinaryColor());
+				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,compressedColor });
 
 				chunkCube.indice = chunkMesh->surfacePoints.size() - 1;
 				surfaceArray.set(curPos, chunkCube);
+				
 			}
 		}
 	}
@@ -165,10 +214,10 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 				static const glm::ivec3 tris[6] = { {0,2,1},{1,2,3},{0,1,4},{4,1,5},{0,4,2},{2,4,6} };
 				//check all 3 possible quads
 				for (int i = 0; i < 3; i++) {
-					if (sign(chunkCube.voxels[7].val) == sign(chunkCube.voxels[edges[i]].val)) continue;
+					if (sign(VoxelLookup[chunkCube.voxels[7]].val) == sign(VoxelLookup[chunkCube.voxels[edges[i]]].val)) continue;
 
 					//Check for the correct winding order
-					bool isClockwise = (sign(chunkCube.voxels[edges[i]].val) < 0) ? false : true;
+					bool isClockwise = (sign(VoxelLookup[chunkCube.voxels[edges[i]]].val) < 0) ? false : true;
 
 					//Create the 2 tris of the quad
 					for (int j = 0; j < 2; j++) {
@@ -188,22 +237,28 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::array<std::shared_ptr<Chunk
 	return chunkMesh;
 }
 
-void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices) {
-	if (surfacePoints.size() <= 0 || indices.size() <= 0) return;
+void Chunk::deleteBufferObjects() {
+	opaqueBuffer.deleteBuffers();
+	translucentBuffer.deleteBuffers();
+}
 
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
+BufferObject Chunk::buildBufferObject(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices) {
 
-	glGenVertexArrays(1, &VAO);
-	glGenBuffers(1, &VBO);
-	glGenBuffers(1, &EBO);
+
+
+	BufferObject bufferObject;
+	if (surfacePoints.size() <= 0 || indices.size() <= 0) return bufferObject;
+
+
+	glGenVertexArrays(1, &bufferObject.VAO);
+	glGenBuffers(1, &bufferObject.VBO);
+	glGenBuffers(1, &bufferObject.EBO);
 	
-	glBindVertexArray(VAO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindVertexArray(bufferObject.VAO);
+		glBindBuffer(GL_ARRAY_BUFFER, bufferObject.VBO);
 		glBufferData(GL_ARRAY_BUFFER, surfacePoints.size() * sizeof(decltype(surfacePoints[0])), &(surfacePoints[0]), GL_STATIC_DRAW);
 
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufferObject.EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(decltype(indices[0])), &(indices[0]), GL_STATIC_DRAW);
 
 		glEnableVertexAttribArray(0);
@@ -213,12 +268,14 @@ void Chunk::buildBufferObjects(std::vector<ChunkVertex>& surfacePoints, std::vec
 		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, norm)));
 	
 		glEnableVertexAttribArray(2);
-		glVertexAttribIPointer(2, 1, GL_SHORT, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, color)));
+		glVertexAttribIPointer(2, 1, GL_INT, sizeof(decltype(surfacePoints[0])), (void*)(offsetof(ChunkVertex, color)));
 	glBindVertexArray(0);
 
-	verticesCount = surfacePoints.size();
-	indicesCount = indices.size() * 3;
+	bufferObject.verticesCount = surfacePoints.size();
+	bufferObject.indicesCount = indices.size() * 3;
 
+
+	return bufferObject;
 	chunkFlag = ChunkFlags::LoadedToGPU;
 }
 
@@ -231,7 +288,7 @@ void Chunk::mesh() {
 	}
 
 	if (!meshTask.valid()) {
-		meshTask = std::async(std::launch::async, &Chunk::calculateMesh, this, chunkNeighbours);
+		meshTask = std::async(std::launch::async, &Chunk::getAllMeshes, this, chunkNeighbours);
 	}
 
 }
@@ -249,7 +306,10 @@ void Chunk::draw(Shader& shader){
 		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 			try {
 				auto chunkMesh = meshTask.get();
-				buildBufferObjects(chunkMesh->surfacePoints, chunkMesh->indices);
+
+				deleteBufferObjects();
+				opaqueBuffer = buildBufferObject(chunkMesh.first->surfacePoints, chunkMesh.first->indices);
+				translucentBuffer = buildBufferObject(chunkMesh.second->surfacePoints, chunkMesh.second->indices);
 			}
 			catch (...) {
 				//Meshbuilding failed early do to surrounding chunk deconstruction
@@ -257,16 +317,21 @@ void Chunk::draw(Shader& shader){
 		}
 	}
 
-	if (VAO == 0) return;
+	if (opaqueBuffer.VAO == 0) return;
 	glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(chunkPos * ChunkSize));
 	shader.setMat4("model", model);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glBindVertexArray(VAO);
-	glDrawElements(GL_TRIANGLES, indicesCount, GL_UNSIGNED_INT, 0);
-	glBindVertexArray(0);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	opaqueBuffer.drawBuffer();
+
+
 }
 
+void Chunk::drawTranslucent(Shader& shader) {
+	if (translucentBuffer.VAO == 0) return;
+	glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(chunkPos * ChunkSize));
+	shader.setMat4("model", model);
+	translucentBuffer.drawBuffer();
+}
 
 
 void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks) {
@@ -281,47 +346,59 @@ bool Chunk::hasMesh() {
 }
 
 Chunk::~Chunk(){
-	//std::cout << "deleting chunk\n" << glm::to_string(chunkPos) << "\n";
-	glDeleteVertexArrays(1, &VAO);
-	glDeleteBuffers(1, &VBO);
-	glDeleteBuffers(1, &EBO);
-
+	deleteBufferObjects();
 }
 
-PerlinNoise perlinNoise;
-void Chunk::generateChunk() {
-	bool isEmpty = true;
+
+void generateEnvironmentObjects() {
 	for (int x = 0; x < ChunkSize; x++) {
 		for (int z = 0; z < ChunkSize; z++) {
-			glm::vec3 realCoords = glm::vec3(x, 0, z) + glm::vec3(chunkPos * ChunkSize);
-			double height = perlinNoise.octavePerlin((glm::vec3(realCoords.x, 0, realCoords.z)) / 5000.0f, 8, 16);
-			for (int y = 0; y < ChunkSize; y++) {
 
-				//if (chunkPos.y != 0) continue;
-				glm::vec3 realCoords = glm::vec3(x, y,z) + glm::vec3(chunkPos * ChunkSize);
-	
-				int heightI = height * 50;
-				Voxel& vox = getVoxel(glm::ivec3(x, y, z));
-				//std::cout << heightI << glm::to_string(realCoords) << "\n";
-				if (realCoords.y < heightI) {
-					//std::cout << "placing" << glm::to_string(realCoords) << "\n";
-					vox = Full;
-				}
-
-				//if (vox != Empty) isEmpty = false;
-
-			}
 		}
 	}
 }
 
 
-Chunk::Chunk(const glm::vec3& pos) : voxelArray(Empty), chunkPos(pos) {
+
+void Chunk::generateChunk() {
+	static const FastNoise::SmartNode<> perlinNoise = FastNoise::NewFromEncodedNodeTree("EQADAAAAAAAAQBAAAAAAPxkAEwCamRk/DQAEAAAAAAAgQAkAAAAAAD8AAAAAPwEEAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAPwAAAAAA");
+	float heightMap[ChunkSize * ChunkSize];
+	perlinNoise->GenUniformGrid3D(heightMap, chunkPos.x*ChunkSize, 0, chunkPos.z*ChunkSize, ChunkSize, 1, ChunkSize, 0.005f, 1337);
+
+	bool isEmpty = true;
+	for (int x = 0; x < ChunkSize; x++) {
+		for (int z = 0; z < ChunkSize; z++) {
+			glm::vec3 realCoords = glm::vec3(x, 0, z) + glm::vec3(chunkPos * ChunkSize);
+			
+			double height = heightMap[x + z * ChunkSize];
+			for (int y = 0; y < ChunkSize; y++) {
+				glm::vec3 realCoords = glm::vec3(x, y,z) + glm::vec3(chunkPos * ChunkSize);
+	
+				int heightI = height * 100;
+				VoxelKey& vox = getVoxel(glm::ivec3(x, y, z));
+				if (realCoords.y < heightI) {
+					vox = VoxelTypes::Full;
+				}
+				else if (realCoords.y < (-150 + rand() % 2)) {
+					vox = VoxelTypes::Water;
+				}
+			}
+		}
+	}
+	generateEnvironmentObjects();
+}
+
+
+Chunk::Chunk(const glm::vec3& pos) : voxelArray(VoxelTypes::Empty), chunkPos(pos) {
 	buildTask = std::async(std::launch::async, &Chunk::generateChunk, this);
 	chunkFlag = ChunkFlags::LoadedInRAM;
 }
 
-Voxel& Chunk::getVoxel(const glm::ivec3& pos) {
+bool Chunk::safeToDelete() {
+	return !buildTask.valid() && !meshTask.valid();
+}
+
+VoxelKey& Chunk::getVoxel(const glm::ivec3& pos) {
 	return voxelArray.get(pos);
 }
 

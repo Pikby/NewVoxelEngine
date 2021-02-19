@@ -13,12 +13,12 @@ out vec3 WorldPos;
 
 float compressedColorToFloat(int compressed, int byteoffset){
 return ((compressed >> byteoffset) & 0xf)/float(0xf);
-}
+} 
 
 
 
 void main() {
-	Color = vec4(compressedColorToFloat(color,0),compressedColorToFloat(color,4),compressedColorToFloat(color,8),compressedColorToFloat(color,12));
+	Color = vec4(compressedColorToFloat(color,0),compressedColorToFloat(color,8),compressedColorToFloat(color,16),compressedColorToFloat(color,24));
 
 
 	gl_Position = projection*view*model*vec4(pos,1);
