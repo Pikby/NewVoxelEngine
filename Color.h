@@ -4,9 +4,8 @@
 #include <glm/glm.hpp>
 
 static const int byteCount = 4;
-static const int maxVal = pow(2,byteCount) - 1;
 static const int offset = byteCount * (8 / 4);
-
+static const int maxVal = pow(2, offset) - 1;
 class Color {
 private:
 	uint32_t color2byte;

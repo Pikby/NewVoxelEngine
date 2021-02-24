@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,7 +19,7 @@ class Shader
 {
 private:
     std::string filePath = "";
-
+    static std::vector<unsigned int> shaderList;
     unsigned int id;
 
     //Some code to add include functionality to shader code
@@ -122,6 +123,7 @@ public:
 
     Shader(const std::string& shader1, const std::string& shader2 = "", const std::string& shader3 = "") {
         id = glCreateProgram();
+        shaderList.push_back(id);
         compileShader(filePath + shader1);
         if (shader2 != "") compileShader(filePath + shader2);
         if (shader3 != "") compileShader(filePath + shader3);
@@ -146,6 +148,13 @@ public:
 
     void use() {
         glUseProgram(id);
+    }
+
+    static void setGlobalMat4(const std::string& name, const glm::mat4& value) {
+        for (auto shader : shaderList) {
+            glUseProgram(shader);
+            glUniformMatrix4fv(glGetUniformLocation(shader, name.c_str()), 1, GL_FALSE, glm::value_ptr(value));
+        }
     }
 
     void setMat4(const std::string& name, const glm::mat4& value) {
@@ -173,6 +182,7 @@ public:
     void setFloat(const std::string& name, float val) {
         glUniform1f(glGetUniformLocation(id, name.c_str()), val);
     }
+
     void setUInt(const std::string& name, unsigned int x) {
         glUniform1ui(glGetUniformLocation(id, name.c_str()), x);
     }

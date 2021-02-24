@@ -7,12 +7,14 @@
 #include <vector>
 #include <unordered_map>
 #include <future>
+#include <btBulletDynamicsCommon.h>
+#include <memory>
 
 #include "Shader.h"
 #include "Array3D.h"
 #include "Color.h"
 #include "Voxel.h"
-
+#include "CollisionObject.h"
 enum class ChunkFlags{LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
 enum class VoxelRenderStyle{Opaque,Translucent};
@@ -31,7 +33,6 @@ struct ChunkCube {
 struct ChunkMesh {
 	std::vector<ChunkVertex> surfacePoints;
 	std::vector<glm::ivec3> indices;
-
 };
 
 struct BufferObject {
@@ -56,6 +57,8 @@ struct BufferObject {
 };
 
 
+
+
 //Table for the 7 chunk neighbours in the postive x,y,z directions respectively
 static const glm::ivec3 chunkNeighboursTable[7] = { {1,1,1},{0,1,1},{1,0,1},{1,1,0},{1,0,0},{0,1,0},{0,0,1}, };
 
@@ -67,6 +70,37 @@ static const std::pair<int, int> cubeEdges[12] = { {0,1}, {0,2}, {1,3}, {2,3}, {
 
 const int ChunkSize = 32;
 
+class ChunkCollisionObject : public CollisionObject {
+private:
+	std::unique_ptr<btTriangleIndexVertexArray> triMesh = nullptr;
+	std::unique_ptr<btTriangleMeshShape> bvhMesh = nullptr;
+	std::unique_ptr<btDefaultMotionState> motion = nullptr;
+	std::unique_ptr<btRigidBody> meshBody = nullptr;
+public:
+	ChunkCollisionObject() {}
+
+	void init(btTriangleIndexVertexArray* TriMesh, const glm::ivec3 pos) {
+		triMesh = std::unique_ptr<btTriangleIndexVertexArray>(TriMesh);
+		bvhMesh = std::make_unique<btBvhTriangleMeshShape>(triMesh.get(), false);
+
+		glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(pos * ChunkSize));
+
+		btTransform transform;
+		transform.setFromOpenGLMatrix((float*)&model);
+
+		motion = std::make_unique<btDefaultMotionState>(transform);
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(0.0f, motion.get(), bvhMesh.get(), btVector3(0, 0, 0));
+		meshBody = std::make_unique<btRigidBody>(rbInfo);
+		meshBody->setFriction(0.5);
+		meshBody->setHitFraction(1);
+		meshBody->setRestitution(0.1);
+	}
+	
+	btRigidBody* getRigidBody() {
+		return meshBody.get();
+	}
+
+};
 
 class Chunk {
 private:
@@ -75,11 +109,17 @@ private:
 	BufferObject opaqueBuffer;
 	BufferObject translucentBuffer;
 
+	ChunkCollisionObject collisionObject;
+
+
+
 	std::weak_ptr<Chunk> chunkNeighbours[7];
 
 	std::future< std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>>> meshTask;
 	std::shared_future<void> buildTask;
 
+	std::shared_ptr<ChunkMesh> chunkMesh;
+	std::shared_ptr<btTriangleIndexVertexArray> collisionMesh = nullptr;
 
 	auto getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
 
@@ -108,7 +148,12 @@ public:
 
 	bool hasMesh();
 	
+
+	bool isLoaded();
+
 	void update();
+
+	btRigidBody* getPhysicsBody();
 
 	bool safeToDelete();
 	Chunk(const glm::vec3& pos);

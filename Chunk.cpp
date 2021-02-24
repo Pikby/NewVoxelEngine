@@ -19,6 +19,8 @@
 #include <vector>
 #include <optional>
 
+
+
 #include "Shader.h"
 #include "Array3D.h"
 //#include "Perlin.h"
@@ -115,7 +117,6 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 				glm::vec4 color;
 				for (int i = 0; i < 8; i++) {
 					glm::ivec3 offset = curPos + cubeCorners[i];
-
 					const VoxelKey key = fullVoxels->get(offset);
 					const Voxel& vox = VoxelLookup[key];
 					if (style == VoxelRenderStyle::Opaque && vox.color.a != 1) {
@@ -137,7 +138,6 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 				}
 
 
-			
 				bool sameSign = true;
 				for (int i = 0; i < 7; i++) {
 					const Voxel& vox1 = VoxelLookup[chunkCube.voxels[i]];
@@ -150,7 +150,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 						}
 					}
 					else {
-						if ((sign(vox1.val) != sign(vox2.val)) && (vox1.color.a != vox2.color.a)) {
+						if ((sign(vox1.val) != sign(vox2.val))) {
 							sameSign = false;
 							break;
 						}
@@ -190,10 +190,11 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 
 				uint32_t compressedColor = static_cast<uint32_t>(Color(color).getBinaryColor());
 				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,compressedColor });
+	
 
 				chunkCube.indice = chunkMesh->surfacePoints.size() - 1;
 				surfaceArray.set(curPos, chunkCube);
-				
+
 			}
 		}
 	}
@@ -214,7 +215,11 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 				static const glm::ivec3 tris[6] = { {0,2,1},{1,2,3},{0,1,4},{4,1,5},{0,4,2},{2,4,6} };
 				//check all 3 possible quads
 				for (int i = 0; i < 3; i++) {
-					if (sign(VoxelLookup[chunkCube.voxels[7]].val) == sign(VoxelLookup[chunkCube.voxels[edges[i]]].val)) continue;
+					const Voxel& vox1 = VoxelLookup[chunkCube.voxels[7]];
+					const Voxel& vox2 = VoxelLookup[chunkCube.voxels[edges[i]]];
+					if (sign(vox1.val) == sign(vox2.val)) continue;
+
+
 
 					//Check for the correct winding order
 					bool isClockwise = (sign(VoxelLookup[chunkCube.voxels[edges[i]]].val) < 0) ? false : true;
@@ -224,15 +229,31 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 						int k = i * 2 + j;
 						glm::ivec3 tri = glm::ivec3(vox[tris[k].x], vox[tris[k].y], vox[tris[k].z]);
 						if (tri.x == -1 || tri.y == -1 || tri.z == -1) continue;
+
+						uint32_t color1 = chunkMesh->surfacePoints[tri.x].color;
+						uint32_t color2 = chunkMesh->surfacePoints[tri.y].color;
+						uint32_t color3 = chunkMesh->surfacePoints[tri.z].color;
+
+						if (style == VoxelRenderStyle::Translucent)
+						{
+							static const int alpha = 0xff000000;
+							if (((color1 & alpha) == alpha) && ((color2 & alpha) == alpha) && ((color3 & alpha) == alpha)) continue;
+						}
+			
+
+
 						if (!isClockwise) {
 							tri = glm::ivec3(vox[tris[k].y], vox[tris[k].x], vox[tris[k].z]);
 						}
 						chunkMesh->indices.push_back(tri);
+
+						
 					}
 				}
 			}
 		}
 	}
+	
 
 	return chunkMesh;
 }
@@ -243,10 +264,8 @@ void Chunk::deleteBufferObjects() {
 }
 
 BufferObject Chunk::buildBufferObject(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices) {
-
-
-
 	BufferObject bufferObject;
+	chunkFlag = ChunkFlags::LoadedToGPU;
 	if (surfacePoints.size() <= 0 || indices.size() <= 0) return bufferObject;
 
 
@@ -276,7 +295,7 @@ BufferObject Chunk::buildBufferObject(std::vector<ChunkVertex>& surfacePoints, s
 
 
 	return bufferObject;
-	chunkFlag = ChunkFlags::LoadedToGPU;
+
 }
 
 void Chunk::mesh() {
@@ -305,11 +324,23 @@ void Chunk::draw(Shader& shader){
 	if (meshTask.valid()) {
 		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 			try {
-				auto chunkMesh = meshTask.get();
+				auto chunkMeshes = meshTask.get();
 
 				deleteBufferObjects();
-				opaqueBuffer = buildBufferObject(chunkMesh.first->surfacePoints, chunkMesh.first->indices);
-				translucentBuffer = buildBufferObject(chunkMesh.second->surfacePoints, chunkMesh.second->indices);
+				opaqueBuffer = buildBufferObject(chunkMeshes.first->surfacePoints, chunkMeshes.first->indices);
+				translucentBuffer = buildBufferObject(chunkMeshes.second->surfacePoints, chunkMeshes.second->indices);
+
+				chunkMesh = chunkMeshes.first;
+
+				if (chunkMesh->indices.size() != 0)
+				{
+					btTriangleIndexVertexArray* collisionMesh = new btTriangleIndexVertexArray(chunkMesh->indices.size(), (int*)(chunkMesh->indices.data()), 3 * sizeof(int),
+						chunkMesh->surfacePoints.size(), (btScalar*)chunkMesh->surfacePoints.data(), sizeof(ChunkVertex));
+
+					collisionObject.init(collisionMesh,getChunkPos());
+				}
+			
+
 			}
 			catch (...) {
 				//Meshbuilding failed early do to surrounding chunk deconstruction
@@ -343,6 +374,10 @@ void Chunk::setNeighbours(const glm::ivec3& pos,std::unordered_map<glm::ivec3, s
 
 bool Chunk::hasMesh() {
 	return !(chunkFlag == ChunkFlags::LoadedInRAM);
+}
+
+bool Chunk::isLoaded() {
+	return (chunkFlag == ChunkFlags::LoadedToGPU);
 }
 
 Chunk::~Chunk(){
@@ -379,7 +414,7 @@ void Chunk::generateChunk() {
 				if (realCoords.y < heightI) {
 					vox = VoxelTypes::Full;
 				}
-				else if (realCoords.y < (-150 + rand() % 2)) {
+				else if (realCoords.y < -150 ) {
 					vox = VoxelTypes::Water;
 				}
 			}
@@ -400,5 +435,9 @@ bool Chunk::safeToDelete() {
 
 VoxelKey& Chunk::getVoxel(const glm::ivec3& pos) {
 	return voxelArray.get(pos);
+}
+
+btRigidBody* Chunk::getPhysicsBody() {
+	return collisionObject.getRigidBody();  
 }
 

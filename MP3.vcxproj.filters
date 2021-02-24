@@ -89,6 +89,15 @@
     <ClInclude Include="Voxel.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Entity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugDrawer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CollisionObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Model.vs">
@@ -110,6 +119,18 @@
       <Filter>Shaders</Filter>
     </None>
     <None Include="Chunk.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="DebugDrawer.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="DebugDrawer.vs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Cloud.fs">
+      <Filter>Shaders</Filter>
+    </None>
+    <None Include="Cloud.vs">
       <Filter>Shaders</Filter>
     </None>
   </ItemGroup>

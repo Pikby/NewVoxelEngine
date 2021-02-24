@@ -3,10 +3,6 @@
 #include "Color.h"
 typedef uint8_t VoxelKey;
 
-
-
-
-
 struct Voxel {
 	glm::vec4 color;
 	int8_t val;
@@ -25,5 +21,5 @@ static const Voxel VoxelLookup[] = {
 	{{1,0,0,1},100}, //Empty
 	{ {0.7,0.7,0.7,1},-100 }, //Full
 	{ {0,0,1,1},-10000}, //Temp
-	{ {0.32,0.62,1,0.7},-100} //Water 
+	{ {0.32,0.62,1,0.7},-1} //Water 
 };

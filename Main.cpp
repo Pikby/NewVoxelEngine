@@ -1,3 +1,6 @@
+#include <btBulletDynamicsCommon.h>
+
+
 
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
@@ -8,6 +11,9 @@
 #include "World.h"
 #include "Camera.h"
 #include "Inputs.h"
+
+
+std::vector<unsigned int> Shader::shaderList;
 
 class MP3Instance {
 public:
@@ -68,23 +74,16 @@ private:
 		//view = camera.GetViewMatrix();
 		glm::mat4 modelMat = glm::scale(glm::mat4(1.f), glm::vec3(0.01f));
 		modelShader.use();
-		modelShader.setMat4("projection", projection);
-		modelShader.setMat4("view", view);
 		modelShader.setMat4("model", modelMat);
 		modelShader.setInt("objTexture", 0);
-		Model model("bunny.obj");
-
-		World world;		
-		const int renderDistance = 10;
-		for (int x = -renderDistance; x < renderDistance; x++) {
-			for (int y = -renderDistance; y < renderDistance; y++) {
-				for (int z = -renderDistance; z < renderDistance; z++) {
-					glm::ivec3 curPos = glm::ivec3(x, y, z);
-					world.loadChunk(glm::ivec3(x, y, z));
-				}
-			}
-		}
 		
+		World world;		
+		Entity* entity = new Entity(glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+		world.addEntity(entity);
+
+		Entity* entity2 = new Entity(glm::vec3(0, 2, 0), glm::vec3(0, 1, 0));
+		world.addEntity(entity2);
+
 		std::cout << "World rendered\n";
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
@@ -92,20 +91,23 @@ private:
 		glEnable(GL_DEPTH_TEST);
 		
 		Shader chunkShader("Chunk.fs", "Chunk.vs");
-		chunkShader.use();
-		chunkShader.setMat4("projection", projection);
-
 		Shader normShader("Norm.fs", "Norm.gs", "Norm.vs");
-		normShader.use();
-		normShader.setMat4("projection", projection);
+		Shader cloudShader("Cloud.fs", "Cloud.vs");
+		Shader debugShader("DebugDrawer.fs", "DebugDrawer.vs");
+
 
 		Camera& camera = InputHandler::getCamera();
+
+
+
+		btDiscreteDynamicsWorld* physicsWorld = world.getPhysicsWorld();
 		while (!glfwWindowShouldClose(window)) {
 			int width, height;
 			glfwGetWindowSize(window,&width, &height);
 			projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
-			chunkShader.use();
-			chunkShader.setMat4("projection", projection);
+			Shader::setGlobalMat4("globalProjection",projection);
+			Shader::setGlobalMat4("globalView", camera.getViewMatrix());
+
 
 			world.scanForChunks(camera.Position);
 			glfwSwapBuffers(window);
@@ -115,7 +117,9 @@ private:
 			static bool flag = true;
 
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
-				world.placeVoxel(Temp, camera);
+				Entity* entity = new Entity(camera.Position, glm::vec3(0, 1, 0));
+				world.addEntity(entity);
+				//world.placeVoxel(Temp, camera);
 				//flag = false;
 			}
 			else {
@@ -123,18 +127,21 @@ private:
 			}
 
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
+	
 				world.placeVoxel(Empty, camera);
 				//flag = false;
 			}
-			glClearColor(0.9, 0.9, 0.9, 1.0f);
+			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			world.drawChunks(chunkShader,camera);
-			
-			/*
-			normShader.use();
-			normShader.setMat4("view", view);
-			world.drawChunks(normShader);
-			*/
+			world.drawClouds(cloudShader, camera);
+
+			debugShader.use();
+			world.update(physicsWorld);
+			world.drawDebugHitboxes(debugShader);
+			world.drawEntities(cloudShader, camera);
+			world.drawTranslucentChunks(chunkShader, camera);
+
 		}
 	}
 
