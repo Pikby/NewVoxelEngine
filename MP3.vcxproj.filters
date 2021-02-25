@@ -19,6 +19,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{54b409a5-11d5-45ab-ad93-5020c175a470}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\ChunkShaders">
+      <UniqueIdentifier>{1b7a9614-90e1-407b-8d53-681b02653d65}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -40,9 +43,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Inputs.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Test.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -115,23 +115,29 @@
     <None Include="Norm.vs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="Chunk.vs">
-      <Filter>Shaders</Filter>
-    </None>
-    <None Include="Chunk.fs">
-      <Filter>Shaders</Filter>
-    </None>
     <None Include="DebugDrawer.fs">
       <Filter>Shaders</Filter>
     </None>
     <None Include="DebugDrawer.vs">
       <Filter>Shaders</Filter>
     </None>
+    <None Include="Chunk.fs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="Chunk.vs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
     <None Include="Cloud.fs">
       <Filter>Shaders</Filter>
     </None>
     <None Include="Cloud.vs">
       <Filter>Shaders</Filter>
+    </None>
+    <None Include="ChunkShadow.vs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="ChunkShadow.fs">
+      <Filter>Shaders\ChunkShaders</Filter>
     </None>
   </ItemGroup>
 </Project>

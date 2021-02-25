@@ -37,6 +37,8 @@ private:
 	inline glm::ivec3 getLocalPos(const glm::vec3& pos);
 
 	unsigned int generateTextureFromNoise(const std::string& noiseString);
+
+	void drawQuad();
 public:
 	World();
 
@@ -56,6 +58,8 @@ public:
 	void drawDebugHitboxes(Shader& shader) {
 		physicsWorld.debugDrawer->draw(shader);
 	}
+
+	void drawDirectionalShadows(const Camera& camera);
 
 	//Scans for chunks around position and unloads them 
 	void scanForChunks(const glm::vec3& pos);

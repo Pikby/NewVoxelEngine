@@ -167,7 +167,6 @@
     <ClCompile Include="Inputs.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlayerCharacter.h" />
-    <ClCompile Include="Test.cpp" />
     <ClCompile Include="TextureLoading.cpp" />
     <ClCompile Include="World.cpp" />
   </ItemGroup>
@@ -193,6 +192,8 @@
   <ItemGroup>
     <None Include="Chunk.fs" />
     <None Include="Chunk.vs" />
+    <None Include="ChunkShadow.fs" />
+    <None Include="ChunkShadow.vs" />
     <None Include="Cloud.fs" />
     <None Include="Cloud.vs" />
     <None Include="DebugDrawer.fs" />

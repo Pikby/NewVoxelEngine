@@ -75,8 +75,6 @@ auto Chunk::getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chu
 				if (!isOutsideChunk) {
 					fullVoxels->set(curPos, voxelArray.get(curPos));
 				}
-
-
 			}
 		}
 	}
@@ -84,7 +82,6 @@ auto Chunk::getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chu
 }
 
 std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>> Chunk::getAllMeshes(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours) {
-
 	auto relevantVoxels = getAllRelevantVoxels(chunkNeighbours);
 	return std::make_pair(calculateMesh(relevantVoxels, VoxelRenderStyle::Opaque), calculateMesh(relevantVoxels, VoxelRenderStyle::Translucent));
 }

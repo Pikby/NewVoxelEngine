@@ -56,9 +56,6 @@ void World::loadChunk(const glm::ivec3& pos) {
 
 int renderDistance = 30*ChunkSize;
 void World::drawChunks(Shader& shader, const Camera& camera) {
-	static unsigned int waterTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/GQAJAAEDAM3MzD0=");
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, waterTexture);
 	shader.use();
 	double time = glfwGetTime();
 
@@ -66,7 +63,9 @@ void World::drawChunks(Shader& shader, const Camera& camera) {
 	shader.setInt("translucent", 0);
 	shader.setVec3("cameraPos", camera.Position);
 	globalLighting.setShaderUniforms(shader);
-
+	globalLighting.setDirectionalShadowMatrices(shader, camera.Position);
+	globalLighting.bindDirectionalShadowTexture();
+	
 	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
 		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
 		if (magnitude > renderDistance) {
@@ -77,19 +76,19 @@ void World::drawChunks(Shader& shader, const Camera& camera) {
 			else {
 				chunk++;
 			}
-
 		}
 		else {
 			chunk->second->draw(shader);
 			++chunk;
 		}
 	}
-
-
 }
 void World::drawTranslucentChunks(Shader& shader,const Camera& camera){
 	shader.use();
 	shader.setInt("translucent", 1);
+	glActiveTexture(GL_TEXTURE0);
+	static unsigned int waterTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/GQAJAAEDAM3MzD0=");
+	glBindTexture(GL_TEXTURE_2D, waterTexture);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_CULL_FACE);
@@ -230,11 +229,7 @@ unsigned int World::generateTextureFromNoise(const std::string& noiseString) {
 	return texture;
 }
 
-void World::drawClouds(Shader& shader, const Camera& camera) {
-
-	const int CloudHeight = 100;
-	const int CloudWidth = 1000;
-
+void World::drawQuad() {
 	struct QuadVertex {
 		glm::vec3 pos;
 		glm::vec2 tex;
@@ -256,16 +251,28 @@ void World::drawClouds(Shader& shader, const Camera& camera) {
 		glGenBuffers(1, &VBO);
 
 		glBindVertexArray(VAO);
-			glBindBuffer(GL_ARRAY_BUFFER, VBO);
-			glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(QuadVertex), quadVertices, GL_STATIC_DRAW);
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(QuadVertex), quadVertices, GL_STATIC_DRAW);
 
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, pos)));
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, pos)));
 
-			glEnableVertexAttribArray(1);
-			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, tex)));
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, tex)));
 		glBindVertexArray(0);
 	}
+
+	glBindVertexArray(VAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glBindVertexArray(0);
+}
+
+void World::drawClouds(Shader& shader, const Camera& camera) {
+
+	const int CloudHeight = 100;
+	const int CloudWidth = 1000;
+
+	
 
 
 	static unsigned int cloudTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/DQADAAAAAAAAQAcAAArXIz4Aj8L1PQ==");
@@ -280,14 +287,15 @@ void World::drawClouds(Shader& shader, const Camera& camera) {
 	shader.setFloat("time", glfwGetTime());
 	shader.setFloat("cloudSpeed", 50);
 	shader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
-
+	shader.setInt("cloudTexture", 0);
+	shader.setInt("shadowTexture", 1);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cloudTexture);
+	globalLighting.bindDirectionalShadowTexture();
+	
 
 	glDisable(GL_CULL_FACE);
-	glBindVertexArray(VAO);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glBindVertexArray(0);
+	drawQuad();
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
@@ -339,7 +347,7 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld) {
 
 	}
 	physicsWorld->stepSimulation(1 / 60.0f, 10);
-	physicsWorld->debugDrawWorld();
+	//physicsWorld->debugDrawWorld();
 
 	for (auto& entity : entityList) {
 		physicsWorld->removeRigidBody(entity->getRigidBody());
@@ -351,6 +359,7 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld) {
 }
 
 void World::drawEntities(Shader& shader, const Camera& camera) {
+	globalLighting.bindDirectionalShadowTexture();
 	for (auto& entity : entityList) {
 		entity->draw(shader, camera);
 	}
@@ -358,4 +367,15 @@ void World::drawEntities(Shader& shader, const Camera& camera) {
 
 btDiscreteDynamicsWorld* World::getPhysicsWorld() {
 	return physicsWorld.physicsWorld.get();
+}
+
+void World::drawDirectionalShadows(const Camera& camera) {
+	static Shader shadowShader("ChunkShadow.fs","ChunkShadow.vs");
+	shadowShader.use();
+	globalLighting.setDirectionalShadowMatrices(shadowShader, camera.Position);
+	globalLighting.bindDirectionalShadowBuffer();
+		glDisable(GL_CULL_FACE);
+		drawChunks(shadowShader,camera);
+		glEnable(GL_CULL_FACE);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }

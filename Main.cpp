@@ -105,9 +105,14 @@ private:
 			int width, height;
 			glfwGetWindowSize(window,&width, &height);
 			projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
+
+
+
+
 			Shader::setGlobalMat4("globalProjection",projection);
 			Shader::setGlobalMat4("globalView", camera.getViewMatrix());
 
+			glViewport(0,0,width, height);
 
 			world.scanForChunks(camera.Position);
 			glfwSwapBuffers(window);
@@ -133,15 +138,23 @@ private:
 			}
 			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+
+			world.drawDirectionalShadows(camera);
+
+			glViewport(0, 0, width, height);
+			
 			world.drawChunks(chunkShader,camera);
 			world.drawClouds(cloudShader, camera);
 
-			debugShader.use();
+		
+			//debugShader.use();
 			world.update(physicsWorld);
-			world.drawDebugHitboxes(debugShader);
+			//world.drawDebugHitboxes(debugShader);
+
+
 			world.drawEntities(cloudShader, camera);
 			world.drawTranslucentChunks(chunkShader, camera);
-
+			
 		}
 	}
 

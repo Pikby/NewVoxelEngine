@@ -6,14 +6,13 @@ uniform float time;
 uniform vec2 windDirection;
 uniform float cloudSpeed;
 uniform sampler2D cloudTexture;
-void main()
-{
-
-
+uniform sampler2D shadowTexture;
+void main(){
+    
     vec2 offset = windDirection*time*cloudSpeed;
     float alpha = texture(cloudTexture,((Tex + offset)/1024.0f)).r;
     alpha = smoothstep(0.5,1.0,alpha);
 
     FragColor = vec4(vec3(1.0),alpha);
-    //FragColor = vec4(vec3(1,0,0),1);
+    FragColor = vec4(texture(shadowTexture,((Tex)/1024.0f)).rg,0,1);
 }
