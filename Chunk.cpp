@@ -297,7 +297,6 @@ BufferObject Chunk::buildBufferObject(std::vector<ChunkVertex>& surfacePoints, s
 
 void Chunk::mesh() {
 	chunkFlag = ChunkFlags::QueuedToMesh;
-
 	std::array<std::shared_ptr<Chunk>,7> chunkNeighbours;
 	for (int i = 0; i < 7;i++) {
 		chunkNeighbours[i] = this->chunkNeighbours[i].lock();
@@ -311,44 +310,9 @@ void Chunk::mesh() {
 
 
 void Chunk::draw(Shader& shader){
-	if (buildTask.valid()) {
-		if (buildTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready){
-			buildTask.get();
-		}
-	}
-
-
-	if (meshTask.valid()) {
-		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-			try {
-				auto chunkMeshes = meshTask.get();
-
-				deleteBufferObjects();
-				opaqueBuffer = buildBufferObject(chunkMeshes.first->surfacePoints, chunkMeshes.first->indices);
-				translucentBuffer = buildBufferObject(chunkMeshes.second->surfacePoints, chunkMeshes.second->indices);
-
-				chunkMesh = chunkMeshes.first;
-
-				if (chunkMesh->indices.size() != 0)
-				{
-					btTriangleIndexVertexArray* collisionMesh = new btTriangleIndexVertexArray(chunkMesh->indices.size(), (int*)(chunkMesh->indices.data()), 3 * sizeof(int),
-						chunkMesh->surfacePoints.size(), (btScalar*)chunkMesh->surfacePoints.data(), sizeof(ChunkVertex));
-
-					collisionObject.init(collisionMesh,getChunkPos());
-				}
-			
-
-			}
-			catch (...) {
-				//Meshbuilding failed early do to surrounding chunk deconstruction
-			}
-		}
-	}
-
 	if (opaqueBuffer.VAO == 0) return;
 	glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(chunkPos * ChunkSize));
 	shader.setMat4("model", model);
-
 	opaqueBuffer.drawBuffer();
 
 
@@ -438,3 +402,38 @@ btRigidBody* Chunk::getPhysicsBody() {
 	return collisionObject.getRigidBody();  
 }
 
+void Chunk::update() {
+	if (buildTask.valid()) {
+		if (buildTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+			buildTask.get();
+		}
+	}
+
+
+	if (meshTask.valid()) {
+		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+			try {
+				auto chunkMeshes = meshTask.get();
+
+				deleteBufferObjects();
+				opaqueBuffer = buildBufferObject(chunkMeshes.first->surfacePoints, chunkMeshes.first->indices);
+				translucentBuffer = buildBufferObject(chunkMeshes.second->surfacePoints, chunkMeshes.second->indices);
+
+				chunkMesh = chunkMeshes.first;
+
+				if (chunkMesh->indices.size() != 0)
+				{
+					btTriangleIndexVertexArray* collisionMesh = new btTriangleIndexVertexArray(chunkMesh->indices.size(), (int*)(chunkMesh->indices.data()), 3 * sizeof(int),
+						chunkMesh->surfacePoints.size(), (btScalar*)chunkMesh->surfacePoints.data(), sizeof(ChunkVertex));
+
+					collisionObject.init(collisionMesh, getChunkPos());
+				}
+
+
+			}
+			catch (...) {
+				//Meshbuilding failed early do to surrounding chunk deconstruction
+			}
+		}
+	}
+}

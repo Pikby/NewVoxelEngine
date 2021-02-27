@@ -14,5 +14,4 @@ void main(){
     alpha = smoothstep(0.5,1.0,alpha);
 
     FragColor = vec4(vec3(1.0),alpha);
-    FragColor = vec4(texture(shadowTexture,((Tex)/1024.0f)).rg,0,1);
 }

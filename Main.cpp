@@ -78,10 +78,10 @@ private:
 		modelShader.setInt("objTexture", 0);
 		
 		World world;		
-		Entity* entity = new Entity(glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+		Entity* entity = new Torch(glm::vec3(10, 1, 0));
 		world.addEntity(entity);
 
-		Entity* entity2 = new Entity(glm::vec3(0, 2, 0), glm::vec3(0, 1, 0));
+		Entity* entity2 = new Torch(glm::vec3(-10, 2, 0));
 		world.addEntity(entity2);
 
 		std::cout << "World rendered\n";
@@ -106,9 +106,10 @@ private:
 			glfwGetWindowSize(window,&width, &height);
 			projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
 
+			glm::mat4 screenProjection = glm::ortho(0, width, 0, height,-1,1);
 
 
-
+			Shader::setGlobalMat4("globalScreenProjection", screenProjection);
 			Shader::setGlobalMat4("globalProjection",projection);
 			Shader::setGlobalMat4("globalView", camera.getViewMatrix());
 
@@ -122,7 +123,7 @@ private:
 			static bool flag = true;
 
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
-				Entity* entity = new Entity(camera.Position, glm::vec3(0, 1, 0));
+				Entity* entity = new Torch(camera.Position);
 				world.addEntity(entity);
 				//world.placeVoxel(Temp, camera);
 				//flag = false;
@@ -138,23 +139,22 @@ private:
 			}
 			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			world.update(physicsWorld,camera);
 
-			world.drawDirectionalShadows(camera);
+			//world.drawDirectionalShadows(camera);
+			world.drawPointShadows(camera);
 
+			
 			glViewport(0, 0, width, height);
-			
-			world.drawChunks(chunkShader,camera);
-			world.drawClouds(cloudShader, camera);
-
 		
-			//debugShader.use();
-			world.update(physicsWorld);
-			//world.drawDebugHitboxes(debugShader);
+	
+		
+			world.drawDebugHitboxes(debugShader);
 
-
-			world.drawEntities(cloudShader, camera);
-			world.drawTranslucentChunks(chunkShader, camera);
-			
+			world.drawEntities(chunkShader, camera);
+			world.drawWorld(chunkShader,camera);
+			world.drawClouds(cloudShader, camera);
+	
 		}
 	}
 

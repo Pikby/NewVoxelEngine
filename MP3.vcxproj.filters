@@ -22,6 +22,9 @@
     <Filter Include="Shaders\ChunkShaders">
       <UniqueIdentifier>{1b7a9614-90e1-407b-8d53-681b02653d65}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\PostProcessing">
+      <UniqueIdentifier>{79d76959-1eba-482b-9201-12d41df6be6c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp">
@@ -43,6 +46,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Inputs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Common.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -98,6 +104,9 @@
     <ClInclude Include="CollisionObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Model.vs">
@@ -133,11 +142,29 @@
     <None Include="Cloud.vs">
       <Filter>Shaders</Filter>
     </None>
-    <None Include="ChunkShadow.vs">
+    <None Include="PingPong.fs">
+      <Filter>Shaders\PostProcessing</Filter>
+    </None>
+    <None Include="PingPong.vs">
+      <Filter>Shaders\PostProcessing</Filter>
+    </None>
+    <None Include="ChunkDirShadow.fs">
       <Filter>Shaders\ChunkShaders</Filter>
     </None>
-    <None Include="ChunkShadow.fs">
+    <None Include="ChunkPointShadow.fs">
       <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="ChunkPointShadow.gs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="ChunkDirShadow.vs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="ChunkPointShadow.vs">
+      <Filter>Shaders\ChunkShaders</Filter>
+    </None>
+    <None Include="torch.fbx">
+      <Filter>Assets</Filter>
     </None>
   </ItemGroup>
 </Project>

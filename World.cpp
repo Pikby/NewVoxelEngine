@@ -11,6 +11,7 @@
 #include "World.h"
 #include "Chunk.h"
 #include "Camera.h"
+#include "Common.h"
 
 #include <optional>
 #include <set>
@@ -31,6 +32,8 @@ World::World() {
 	physicsWorld.overlappingPairCache = std::make_unique<btDbvtBroadphase>();
 	physicsWorld.solver = std::make_unique<btSequentialImpulseConstraintSolver>();
 	physicsWorld.physicsWorld = std::make_unique<btDiscreteDynamicsWorld>(physicsWorld.dispatcher.get(), physicsWorld.overlappingPairCache.get(), physicsWorld.solver.get(), physicsWorld.collisionConfiguration.get());
+	
+	
 	physicsWorld.physicsWorld->setDebugDrawer(physicsWorld.debugDrawer.get());
 	physicsWorld.physicsWorld->setGravity(btVector3(0, -10, 0));
 }
@@ -54,34 +57,58 @@ void World::loadChunk(const glm::ivec3& pos) {
 
 }
 
-int renderDistance = 30*ChunkSize;
-void World::drawChunks(Shader& shader, const Camera& camera) {
+
+
+PointLight light;
+
+
+
+void World::drawWorld(Shader& shader, const Camera& camera) {
 	shader.use();
 	double time = glfwGetTime();
 
 	shader.setFloat("time", time);
 	shader.setInt("translucent", 0);
 	shader.setVec3("cameraPos", camera.Position);
+
 	globalLighting.setShaderUniforms(shader);
 	globalLighting.setDirectionalShadowMatrices(shader, camera.Position);
-	globalLighting.bindDirectionalShadowTexture();
-	
-	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
-		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
-		if (magnitude > renderDistance) {
-			//Only delete the chunk if no other thread has it in use
-			if ((chunk->second.use_count() == 1) && chunk->second->safeToDelete()) {
-				chunks.erase(chunk++);
-			}
-			else {
-				chunk++;
-			}
-		}
-		else {
-			chunk->second->draw(shader);
-			++chunk;
-		}
+	globalLighting.bindShadowTexture();
+
+	/*
+	for (int i = 0; i < pointLightList.size(); i++) {
+		pointLightList[i]->setShaderUniforms(shader, i);
+		pointLightList[i]->bindShadowTexture(i);
 	}
+	*/
+
+	pointLightList[0]->setShaderUniforms(shader, 0);
+	pointLightList[0]->bindShadowTexture(0);
+
+	pointLightList[1]->setShaderUniforms(shader, 1);
+	pointLightList[1]->bindShadowTexture(1);
+	
+	//shader.setInt("pointLightCount", std::min(int(pointLightList.size()), 10));
+
+
+	pointLightList.clear();
+	//light.setShaderUniforms(shader);
+	//light.bindShadowTexture();
+
+	drawChunks(shader,camera.Position,20);
+	drawTranslucentChunks(shader, camera);
+}
+
+void World::drawChunks(Shader& shader, const glm::vec3& origin, unsigned int renderDistance) {
+
+	for (auto& chunk : chunks ) {
+		glm::vec3 realPos = chunk.second->getChunkPos() * ChunkSize;
+		if (glm::distance(origin, realPos) < renderDistance*ChunkSize) {
+			chunk.second->draw(shader);
+		}
+		
+	}
+
 }
 void World::drawTranslucentChunks(Shader& shader,const Camera& camera){
 	shader.use();
@@ -230,51 +257,15 @@ unsigned int World::generateTextureFromNoise(const std::string& noiseString) {
 }
 
 void World::drawQuad() {
-	struct QuadVertex {
-		glm::vec3 pos;
-		glm::vec2 tex;
-	};
-	static QuadVertex quadVertices[] = {
-		// positions          // colors      // texture coords
-		{{1.0f,  1.0f, 0.0f},   {1.0f, 1.0f}},   // top right
-		{{1.0f, -1.0f, 0.0f},   {1.0f, 0.0f}},   // bottom right
-		{{-1.0f, -1.0f, 0.0f},  {0.0f, 0.0f}},   // bottom left
-
-		{{1.0f,  1.0f, 0.0f},   {1.0f, 1.0f}},   // top right
-		{{-1.0f, -1.0f, 0.0f},  {0.0f, 0.0f}},   // bottom left
-		{{-1.0f,  1.0f, 0.0f},  {0.0f, 1.0f}},    // top left 
-	};
-
-	static unsigned int VAO = 0, VBO = 0;
-	if (VAO == 0) {
-		glGenVertexArrays(1, &VAO);
-		glGenBuffers(1, &VBO);
-
-		glBindVertexArray(VAO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-		glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(QuadVertex), quadVertices, GL_STATIC_DRAW);
-
-		glEnableVertexAttribArray(0);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, pos)));
-
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(decltype(quadVertices[0])), (void*)(offsetof(QuadVertex, tex)));
-		glBindVertexArray(0);
-	}
-
-	glBindVertexArray(VAO);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
-	glBindVertexArray(0);
+	OpenGLCommon::drawQuad();
 }
+
+
 
 void World::drawClouds(Shader& shader, const Camera& camera) {
 
 	const int CloudHeight = 100;
 	const int CloudWidth = 1000;
-
-	
-
-
 	static unsigned int cloudTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/DQADAAAAAAAAQAcAAArXIz4Aj8L1PQ==");
 
 	glm::mat4 model(1);
@@ -288,10 +279,8 @@ void World::drawClouds(Shader& shader, const Camera& camera) {
 	shader.setFloat("cloudSpeed", 50);
 	shader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
 	shader.setInt("cloudTexture", 0);
-	shader.setInt("shadowTexture", 1);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cloudTexture);
-	globalLighting.bindDirectionalShadowTexture();
 	
 
 	glDisable(GL_CULL_FACE);
@@ -303,7 +292,29 @@ void World::drawClouds(Shader& shader, const Camera& camera) {
 
 
 
-void World::update(btDiscreteDynamicsWorld* physicsWorld) {
+void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
+
+	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
+		chunk->second->update();
+	
+		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
+		if (magnitude > renderDistance) {
+			if ((chunk->second.use_count() == 1) && chunk->second->safeToDelete()) {
+				chunks.erase(chunk++);
+			}
+			else {
+				chunk++;
+			}
+		}
+		else {
+			chunk++;
+		}
+
+
+	}
+
+
+
 	std::set<btRigidBody*> loadedChunks;
 	for (auto& entity : entityList) {
 		float size = entity->getSize();
@@ -356,10 +367,15 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld) {
 	for (auto body : loadedChunks) {
 		physicsWorld->removeRigidBody(body);
 	}
+
+	
+
 }
 
 void World::drawEntities(Shader& shader, const Camera& camera) {
-	globalLighting.bindDirectionalShadowTexture();
+	shader.use();
+	shader.setMat4("view", camera.getViewMatrix());
+	globalLighting.bindShadowTexture();
 	for (auto& entity : entityList) {
 		entity->draw(shader, camera);
 	}
@@ -370,12 +386,38 @@ btDiscreteDynamicsWorld* World::getPhysicsWorld() {
 }
 
 void World::drawDirectionalShadows(const Camera& camera) {
-	static Shader shadowShader("ChunkShadow.fs","ChunkShadow.vs");
+	static Shader shadowShader("ChunkDirShadow.fs","ChunkDirShadow.vs");
 	shadowShader.use();
+
+	
 	globalLighting.setDirectionalShadowMatrices(shadowShader, camera.Position);
-	globalLighting.bindDirectionalShadowBuffer();
+	globalLighting.bindShadowBuffer();
 		glDisable(GL_CULL_FACE);
-		drawChunks(shadowShader,camera);
+		drawChunks(shadowShader,camera.Position,renderDistance);
 		glEnable(GL_CULL_FACE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	globalLighting.blurShadows();
+	
+
+}
+
+
+void World::drawPointShadows(const Camera& camera) {
+	static Shader shadowShader("ChunkPointShadow.fs", "ChunkPointShadow.vs", "ChunkPointShadow.gs");
+	shadowShader.use();
+
+	for (auto& entity : entityList) {
+		if (entity->hasPointLight()) {
+			PointLight* light = entity->getPointLight();
+		
+
+			light->setShadowMatrices(shadowShader);
+			light->bindShadowBuffer();
+			pointLightList.push_back(light);
+			drawChunks(shadowShader, light->getPosition(), (light->getRadius() / ChunkSize) + 2);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		}
+	}
+
+	return;
 }
