@@ -10,11 +10,11 @@
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 
-#include "Shader.h"
-#include "Array3D.h"
-#include "Color.h"
-#include "Voxel.h"
-#include "CollisionObject.h"
+#include "../../Include/Shader.h"
+#include "../../Include/Array3D.h"
+#include "../../Include/Color.h"
+#include "../../Include/Voxel.h"
+
 enum class ChunkFlags{LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
 enum class VoxelRenderStyle{Opaque,Translucent};
@@ -70,7 +70,7 @@ static const std::pair<int, int> cubeEdges[12] = { {0,1}, {0,2}, {1,3}, {2,3}, {
 
 const int ChunkSize = 32;
 
-class ChunkCollisionObject : public CollisionObject {
+class ChunkCollisionObject{
 private:
 	std::unique_ptr<btTriangleIndexVertexArray> triMesh = nullptr;
 	std::unique_ptr<btTriangleMeshShape> bvhMesh = nullptr;

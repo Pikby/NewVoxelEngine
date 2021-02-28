@@ -4,8 +4,8 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#include "Texture.h"
+#include "Include/stb_image.h"
+#include "Include/Texture.h"
 Texture::Texture(const std::string& name, const std::string& directory, const std::string& typeName) : path(name), type(typeName) {
 	int width, height, nrChannels;
 	unsigned char* data = stbi_load("container.jpg", &width, &height, &nrChannels, 0);

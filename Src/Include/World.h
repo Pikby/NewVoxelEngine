@@ -8,11 +8,11 @@
 #include <glm/gtx/hash.hpp>
 
 
-#include "Entity.h"
+#include "../../Include/Entity.h"
 #include "Chunk.h"
-#include "Camera.h"
-#include "GlobalLighting.h"
-#include "DebugDrawer.h"
+#include "../../Include/Camera.h"
+#include "../../Include/Lighting.h"
+#include "../../Include/DebugDrawer.h"
 struct PhysicsWorld {
 	std::unique_ptr<DebugDrawer> debugDrawer;
 	std::unique_ptr<btDefaultCollisionConfiguration> collisionConfiguration;
@@ -32,7 +32,7 @@ private:
 	unsigned int renderDistance = 20;
 
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
-	void loadNeighbouringChunks(glm::ivec3 pos);
+	void loadNeighbouringChunks(const glm::ivec3& pos);
 	std::optional<glm::ivec3> findLookingVoxel(Camera& camera);
 	inline glm::ivec3 getChunkPos(const glm::vec3& pos);
 	inline glm::ivec3 getLocalPos(const glm::vec3& pos);
@@ -52,7 +52,7 @@ public:
 	void drawChunks(Shader& shader, const glm::vec3& origin, unsigned int renderDistance);
 	void drawTranslucentChunks(Shader& shader, const Camera& camera);
 
-	void drawClouds(Shader& shader, const Camera& camera);
+	void drawClouds(const Camera& camera);
 	
 	void drawEntities(Shader& shader, const Camera& camera);
 

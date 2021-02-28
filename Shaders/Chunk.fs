@@ -176,7 +176,8 @@ void main() {
 	if(translucent == 1){
 		vec2 textureOrigin = cameraPos.xz*4-vec2(512);
 		vec2 textureCoord = ( WorldPos.xz - textureOrigin);
-			FragColor = FragColor*(max((texture(waterTexture,((WorldPos.xz +vec2(time*10))/1024.0f)).r+0.5),1));
+		float alpha = max((texture(waterTexture,((WorldPos.xz +vec2(time*10))/1024.0f)).r),0.7);
+		FragColor.a *= alpha;
 	}
 	
 	

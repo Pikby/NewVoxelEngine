@@ -1,4 +1,5 @@
-
+#define GLM_FORCE_AVX
+#define GLM_ENABLE_EXPERIMENTAL
 #include <iostream>>
 #include <FastNoise/FastNoise.h>
 
@@ -12,8 +13,7 @@
 #include <array>
 
 
-#define GLM_FORCE_AVX
-#define GLM_ENABLE_EXPERIMENTAL
+
 #include <glm/gtx/hash.hpp>
 
 #include <vector>
@@ -21,10 +21,10 @@
 
 
 
-#include "Shader.h"
-#include "Array3D.h"
+#include "../Include/Shader.h"
+#include "../Include/Array3D.h"
 //#include "Perlin.h"
-#include "Chunk.h";
+#include "Include/Chunk.h";
 
 
 
@@ -158,6 +158,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 
 				glm::vec3 surfacePoint(0);
 				count = 1;
+				glm::vec4 totalColor(0);
 				for (int i = 0; i < 12; i++) {
 					Voxel vox1 = VoxelLookup[chunkCube.voxels[cubeEdges[i].first]];
 					Voxel vox2 = VoxelLookup[chunkCube.voxels[cubeEdges[i].second]];
@@ -169,9 +170,17 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 
 					glm::vec3 pf = (1 - alpha) * p1 + alpha * p2;
 					surfacePoint += (pf - surfacePoint) / static_cast<float>(count);
-
+					if (vox1.val < 0) {
+						totalColor += vox1.color;
+					}
+					else {
+						totalColor += vox2.color;
+					}
+					
 					count++;
 				}
+
+				totalColor = totalColor / glm::vec4(count-1);
 
 				static const glm::ivec3 dir[4] = { {0,1,8},{3,2,9},{4,5,10},{7,6,11} };
 				glm::vec3 norm(0);
@@ -185,7 +194,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 					norm = glm::normalize(norm);
 				}
 
-				uint32_t compressedColor = static_cast<uint32_t>(Color(color).getBinaryColor());
+				uint32_t compressedColor = static_cast<uint32_t>(Color(totalColor).getBinaryColor());
 				chunkMesh->surfacePoints.push_back({ surfacePoint,norm,compressedColor });
 	
 
@@ -359,21 +368,22 @@ void generateEnvironmentObjects() {
 void Chunk::generateChunk() {
 	static const FastNoise::SmartNode<> perlinNoise = FastNoise::NewFromEncodedNodeTree("EQADAAAAAAAAQBAAAAAAPxkAEwCamRk/DQAEAAAAAAAgQAkAAAAAAD8AAAAAPwEEAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAPwAAAAAA");
 	float heightMap[ChunkSize * ChunkSize];
-	perlinNoise->GenUniformGrid3D(heightMap, chunkPos.x*ChunkSize, 0, chunkPos.z*ChunkSize, ChunkSize, 1, ChunkSize, 0.005f, 1337);
 
+	perlinNoise->GenUniformGrid3D(heightMap, chunkPos.x * ChunkSize, 0, chunkPos.z * ChunkSize,ChunkSize, 1,ChunkSize, 0.005f, 1337);
 	bool isEmpty = true;
 	for (int x = 0; x < ChunkSize; x++) {
 		for (int z = 0; z < ChunkSize; z++) {
-			glm::vec3 realCoords = glm::vec3(x, 0, z) + glm::vec3(chunkPos * ChunkSize);
-			
 			double height = heightMap[x + z * ChunkSize];
+			int heightI = glm::floor(height * 100);
 			for (int y = 0; y < ChunkSize; y++) {
-				glm::vec3 realCoords = glm::vec3(x, y,z) + glm::vec3(chunkPos * ChunkSize);
-	
-				int heightI = height * 100;
 				VoxelKey& vox = getVoxel(glm::ivec3(x, y, z));
-				if (realCoords.y < heightI) {
-					vox = VoxelTypes::Full;
+				glm::ivec3 realCoords = glm::ivec3(x,y,z) + glm::ivec3((chunkPos) * ChunkSize);
+		
+				if (realCoords.y == heightI) {
+					vox = VoxelTypes::Snow;
+				}
+				else if (realCoords.y < heightI) {
+					vox = VoxelTypes::Dirt;
 				}
 				else if (realCoords.y < -150 ) {
 					vox = VoxelTypes::Water;

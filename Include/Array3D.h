@@ -7,7 +7,7 @@ private:
 	const int arrSize = ArrSize;
 	T cubeArray[ArrSize * ArrSize * ArrSize];
 
-	int getArrayLocation(int x, int y, int z) {
+	inline int getArrayLocation(int x, int y, int z) const {
 		return x + y * arrSize + z * arrSize*arrSize;
 	}
 
@@ -68,7 +68,14 @@ public:
 		return cubeArray[getArrayLocation(x, y, z)];
 	}
 
-	bool isAllSame() {
+	const T& get(int x, int y, int z) const {
+		if (x >= ArrSize || y >= ArrSize || z >= ArrSize || x < 0 || y < 0 || z < 0) {
+			std::cout << x << ":" << y << ":" << z << " out of range\n";
+		}
+		return cubeArray[getArrayLocation(x, y, z)];
+	}
+
+	bool isAllSame() const {
 		T val = get(0, 0, 0);
 		for (int x = 0; x < arrSize; x++) {
 			for (int y = 0; y < arrSize; y++) {
@@ -85,6 +92,9 @@ public:
 	T& get(const glm::ivec3& pos) {
 		return get(pos.x, pos.y, pos.z);
 	}
+	const T& get(const glm::ivec3& pos) const {
+		return get(pos.x, pos.y, pos.z);
+	}
 
 	void reset() {
 		memset(cubeArray, 0, sizeof(T) * ArrSize * ArrSize * ArrSize);
@@ -95,6 +105,10 @@ public:
 	}
 
 	T* data() {
+		return cubeArray;
+	}
+
+	T* const data() const {
 		return cubeArray;
 	}
 };

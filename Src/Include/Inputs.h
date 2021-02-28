@@ -4,7 +4,7 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include <map>
-#include "Camera.h"
+#include "../../Include/Camera.h"
 
 enum class Action { MoveForward, MoveBackwards, MoveLeft, MoveRight, PrimaryAction, SecondaryAction};
 

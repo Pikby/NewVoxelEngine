@@ -8,7 +8,7 @@
 #include "Camera.h"
 #include "Model.h"
 #include "Common.h"
-#include "GlobalLighting.h"
+#include "Lighting.h"
 class Entity {
 protected:
 	std::unique_ptr<btCollisionShape> shape;
@@ -64,6 +64,11 @@ public:
 		return pointLightFlag;
 	}
 
+	void setPosition(const glm::vec3 pos) {
+		btTransform& transform = body->getWorldTransform();
+		transform.setOrigin(btVector3(pos.x, pos.y, pos.z));
+	}
+
 	virtual PointLight* getPointLight() {
 		return nullptr;
 	}
@@ -101,7 +106,7 @@ public:
 	Torch(const glm::vec3& Pos) {
 
 		pointLightFlag = true;
-		shape = std::make_unique<btSphereShape>(size);
+		shape = std::make_unique<btCylinderShape>(btVector3(0.1,1.0,0.5));
 		btVector3 inertia = btVector3(0.0, 0.0, 0.0);
 		shape->calculateLocalInertia(2.0f, inertia);
 
@@ -109,7 +114,7 @@ public:
 		object->setCollisionShape(shape.get());
 
 		glm::mat4 model = glm::translate(glm::mat4(1), Pos);
-
+		model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0, 0, 1));
 		btTransform transform;
 		transform.setFromOpenGLMatrix((float*)&model);
 
@@ -125,15 +130,18 @@ public:
 
 	void draw(Shader& shader, const Camera& camera) {
 
+		static Shader Shader("Model.fs", "Model.vs");
 		glm::mat4 model(1);
-		model = glm::translate(model, getPosition());
+		model = getModelMatrix();
+		model = glm::translate(model,glm::vec3(0.f, 0.5f, 0.f));
+		model = glm::rotate(model, glm::radians(90.f), glm::vec3(1, 0, 0));
 		//model = glm::scale(model, glm::vec3(0.01));
-		shader.use();
-		shader.setMat4("model",getModelMatrix());
-		static Model torch("torch.fbx");
+		Shader.use();
+		Shader.setMat4("model",model);
+		static Model torch("Assets/torch.fbx");
 
 		glCullFace(GL_FRONT);
-		torch.Draw(shader);
+		torch.Draw(Shader);
 		glCullFace(GL_BACK);
 	}
 

@@ -3,8 +3,8 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include <map>
-#include "Camera.h"
-#include "Inputs.h"
+#include "../Include/Camera.h"
+#include "Include/Inputs.h"
 #include <iostream>
 
 std::map<int, Action> keyMap = { {GLFW_KEY_W,Action::MoveForward },

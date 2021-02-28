@@ -1,20 +1,24 @@
+#include <FastNoise/FastNoise.h>
+
 #include <glm/gtc/integer.hpp>
 #include <map>
 #include <unordered_map>
 #include <memory>
-#include <FastNoise/FastNoise.h>
 #include <future>
 #include <array>
+#include <optional>
+#include <set>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
-#include "World.h"
-#include "Chunk.h"
-#include "Camera.h"
-#include "Common.h"
+#include "Include/World.h"
+#include "Include/Chunk.h"
 
-#include <optional>
-#include <set>
+#include "../Include/Common.h"
+#include "../Include/Array3D.h"
+
+
+
 
 inline glm::ivec3 World::getChunkPos(const glm::vec3& pos) {
 	return glm::floor(glm::vec3(pos) / glm::vec3(ChunkSize));
@@ -25,7 +29,8 @@ inline glm::ivec3 World::getLocalPos(const glm::vec3& pos) {
 
 
 
-World::World() {
+World::World() :globalLighting(glm::vec3(0.1,0.1,0.15),glm::vec3(0.1),glm::vec3(0.5)) {
+
 	physicsWorld.debugDrawer = std::make_unique<DebugDrawer>();
 	physicsWorld.collisionConfiguration = std::make_unique<btDefaultCollisionConfiguration>();
 	physicsWorld.dispatcher = std::make_unique<btCollisionDispatcher>(physicsWorld.collisionConfiguration.get());
@@ -58,21 +63,16 @@ void World::loadChunk(const glm::ivec3& pos) {
 }
 
 
-
-PointLight light;
-
-
-
 void World::drawWorld(Shader& shader, const Camera& camera) {
 	shader.use();
 	double time = glfwGetTime();
 
 	shader.setFloat("time", time);
 	shader.setInt("translucent", 0);
-	shader.setVec3("cameraPos", camera.Position);
+	shader.setVec3("cameraPos", camera.getPosition());
 
 	globalLighting.setShaderUniforms(shader);
-	globalLighting.setDirectionalShadowMatrices(shader, camera.Position);
+	globalLighting.setDirectionalShadowMatrices(shader, camera.getPosition());
 	globalLighting.bindShadowTexture();
 
 	/*
@@ -95,7 +95,7 @@ void World::drawWorld(Shader& shader, const Camera& camera) {
 	//light.setShaderUniforms(shader);
 	//light.bindShadowTexture();
 
-	drawChunks(shader,camera.Position,20);
+	drawChunks(shader,camera.getPosition(),20);
 	drawTranslucentChunks(shader, camera);
 }
 
@@ -164,8 +164,8 @@ VoxelKey& World::getVoxel(const glm::ivec3& pos) {
 
 
 std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
-	glm::vec3 front = camera.Front;
-	glm::vec3 pos = camera.Position;
+	glm::vec3 front = camera.getFront();
+	glm::vec3 pos = camera.getPosition();
 
 	const float stepSize = 0.2;
 	const int maxSteps = 10000;
@@ -185,8 +185,8 @@ std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
 }
 
 void World::placeVoxel(VoxelKey vox,Camera& camera) {
-	glm::vec3 front = camera.Front;
-	glm::vec3 pos = camera.Position;
+	glm::vec3 front = camera.getFront();
+	glm::vec3 pos = camera.getPosition();
 
 	const float stepSize = 0.1;
 	const int maxSteps = 10000;
@@ -220,7 +220,7 @@ void World::addEntity(Entity* entity){
 
 
 
-void World::loadNeighbouringChunks(glm::ivec3 pos) {
+void World::loadNeighbouringChunks(const glm::ivec3& pos) {
 	glm::ivec3 chunkPos = getChunkPos(pos);
 	glm::ivec3 localPos = getLocalPos(pos);
 
@@ -262,23 +262,23 @@ void World::drawQuad() {
 
 
 
-void World::drawClouds(Shader& shader, const Camera& camera) {
-
+void World::drawClouds(const Camera& camera) {
+	static Shader cloudShader("Cloud.fs", "Cloud.vs");
 	const int CloudHeight = 100;
-	const int CloudWidth = 1000;
+	const int CloudWidth = 2000;
 	static unsigned int cloudTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/DQADAAAAAAAAQAcAAArXIz4Aj8L1PQ==");
 
 	glm::mat4 model(1);
-	model = glm::translate(model, glm::vec3(camera.Position.x, CloudHeight, camera.Position.z));
+	model = glm::translate(model, glm::vec3(camera.getPosition().x, CloudHeight, camera.getPosition().z));
 	model = glm::scale(model, glm::vec3(CloudWidth, 1, CloudWidth));
 	model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1, 0, 0));
 
-	shader.use();
-	shader.setMat4("model", model);
-	shader.setFloat("time", glfwGetTime());
-	shader.setFloat("cloudSpeed", 50);
-	shader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
-	shader.setInt("cloudTexture", 0);
+	cloudShader.use();
+	cloudShader.setMat4("model", model);
+	cloudShader.setFloat("time", glfwGetTime());
+	cloudShader.setFloat("cloudSpeed", 50);
+	cloudShader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
+	cloudShader.setInt("cloudTexture", 0);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, cloudTexture);
 	
@@ -297,7 +297,7 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
 		chunk->second->update();
 	
-		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.Position);
+		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.getPosition());
 		if (magnitude > renderDistance) {
 			if ((chunk->second.use_count() == 1) && chunk->second->safeToDelete()) {
 				chunks.erase(chunk++);
@@ -358,7 +358,7 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 
 	}
 	physicsWorld->stepSimulation(1 / 60.0f, 10);
-	//physicsWorld->debugDrawWorld();
+	physicsWorld->debugDrawWorld();
 
 	for (auto& entity : entityList) {
 		physicsWorld->removeRigidBody(entity->getRigidBody());
@@ -390,10 +390,10 @@ void World::drawDirectionalShadows(const Camera& camera) {
 	shadowShader.use();
 
 	
-	globalLighting.setDirectionalShadowMatrices(shadowShader, camera.Position);
+	globalLighting.setDirectionalShadowMatrices(shadowShader, camera.getPosition());
 	globalLighting.bindShadowBuffer();
 		glDisable(GL_CULL_FACE);
-		drawChunks(shadowShader,camera.Position,renderDistance);
+		drawChunks(shadowShader,camera.getPosition(),renderDistance);
 		glEnable(GL_CULL_FACE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	globalLighting.blurShadows();

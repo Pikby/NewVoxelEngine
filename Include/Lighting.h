@@ -34,7 +34,7 @@ private:
 
 public:
 	DirectionalLight() {}
-	DirectionalLight(const glm::vec3& AmbientColor, const glm::vec3& DiffuseColor, const glm::vec3& SpecularColor, float SpecularExponent)
+	DirectionalLight(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(1), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =32)
 		: Light(AmbientColor,DiffuseColor, SpecularColor, SpecularExponent){}
 
 	void setGlobaLightDirection(const glm::vec3& dir) {

@@ -20,6 +20,8 @@ public:
         loadModel(path);
     }
     void Draw(Shader& shader) {
+
+
         for (auto mesh : meshes) {
             mesh.Draw(shader);
         }

@@ -18,7 +18,7 @@
 class Shader
 {
 private:
-    std::string filePath = "";
+    static std::string filePath;
     static std::vector<unsigned int> shaderList;
     unsigned int id;
 
@@ -114,12 +114,12 @@ private:
         glDeleteShader(shader);
     }
 public:
-    /*
+
     static void setShaderDirectory(const std::string& FilePath)
     {
         filePath = FilePath;
     }
-    */
+
 
     Shader(const std::string& shader1, const std::string& shader2 = "", const std::string& shader3 = "") {
         id = glCreateProgram();
@@ -132,8 +132,7 @@ public:
         int success;
         char infoLog[512];
         glGetProgramiv(id, GL_LINK_STATUS, &success);
-        if (!success)
-        {
+        if (!success) {
             glGetProgramInfoLog(id, 1024, NULL, infoLog);
             std::cout << shader1 << ":  ERROR::PROGRAM_LINKING_ERROR" << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
 

@@ -1,5 +1,5 @@
-#include "Common.h"
-#include "Shader.h"
+#include "../Include/Common.h"
+#include "../Include/Shader.h"
 void OpenGLCommon::drawQuad(){
 	 struct QuadVertex {
 		 glm::vec3 pos;
@@ -16,18 +16,6 @@ void OpenGLCommon::drawQuad(){
 		 {{-1.0f, -1.0f, 0.0f},  {0.0f, 0.0f}},   // bottom left
 		 {{-1.0f,  1.0f, 0.0f},  {0.0f, 1.0f}},    // top left 
 	 };
-	 /*
-	 static QuadVertex quadVertices[] = {
-	 {{0.5f,  0.5f, 0.0f},{1.0f, 1.0f}},   // top right
-	 {{0.5f, -0.5f, 0.0f},{1.0f, 1.0f}}, // bottom right
-	 {{-0.5f,  0.5f, 0.0f},{1.0f, 1.0f}},  // top left 
-				// second triangle
-	 {{0.5f, -0.5f, 0.0f},{1.0f, 1.0f}}, // bottom right
-	 {{-0.5f, -0.5f, 0.0f},{1.0f, 1.0f}},  // bottom left
-	 {{-0.5f,  0.5f, 0.0f},{1.0f, 1.0f}}
-	 };
-
-	 */
 	 static unsigned int VAO = 0, VBO = 0;
 	 if (VAO == 0) {
 		 glGenVertexArrays(1, &VAO);

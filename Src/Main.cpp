@@ -1,19 +1,20 @@
 #include <btBulletDynamicsCommon.h>
-
-
-
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#include "Model.h"
-#include "Chunk.h"
-#include "World.h"
-#include "Camera.h"
-#include "Inputs.h"
+#include "Include/Chunk.h"
+#include "Include/World.h"
+#include "Include/Inputs.h"
+
+#include "../Include/Camera.h"
+#include "../Include/Model.h"
+#include "../Include/PlayerCharacter.h"
+
 
 
 std::vector<unsigned int> Shader::shaderList;
+std::string Shader::filePath = "Shaders/";
 
 class MP3Instance {
 public:
@@ -59,24 +60,8 @@ private:
 	}
 
 
-	void drawLoop() {
 
-	}
-
-	void mainLoop() {
-		Shader modelShader("Model.fs","Model.vs");
-
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 1000.0f);
-		glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 1.0f, -10.0f),
-			glm::vec3(0.0f, 0.0f, 0.0f),
-			glm::vec3(0.0f, 1.0f, 0.0f));
-
-		//view = camera.GetViewMatrix();
-		glm::mat4 modelMat = glm::scale(glm::mat4(1.f), glm::vec3(0.01f));
-		modelShader.use();
-		modelShader.setMat4("model", modelMat);
-		modelShader.setInt("objTexture", 0);
-		
+	void mainLoop() {	
 		World world;		
 		Entity* entity = new Torch(glm::vec3(10, 1, 0));
 		world.addEntity(entity);
@@ -84,7 +69,9 @@ private:
 		Entity* entity2 = new Torch(glm::vec3(-10, 2, 0));
 		world.addEntity(entity2);
 
-		std::cout << "World rendered\n";
+		Entity* mainChar = new PlayerCharacter(glm::vec3(0, 0, 0));
+		world.addEntity(mainChar);
+
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 		
@@ -92,9 +79,7 @@ private:
 		
 		Shader chunkShader("Chunk.fs", "Chunk.vs");
 		Shader normShader("Norm.fs", "Norm.gs", "Norm.vs");
-		Shader cloudShader("Cloud.fs", "Cloud.vs");
 		Shader debugShader("DebugDrawer.fs", "DebugDrawer.vs");
-
 
 		Camera& camera = InputHandler::getCamera();
 
@@ -104,56 +89,43 @@ private:
 		while (!glfwWindowShouldClose(window)) {
 			int width, height;
 			glfwGetWindowSize(window,&width, &height);
-			projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
+			glm::mat4 projection = glm::perspective(glm::radians(45.0f), float(width) / float(height), 0.1f, 1000.0f);
 
-			glm::mat4 screenProjection = glm::ortho(0, width, 0, height,-1,1);
-
-
-			Shader::setGlobalMat4("globalScreenProjection", screenProjection);
 			Shader::setGlobalMat4("globalProjection",projection);
 			Shader::setGlobalMat4("globalView", camera.getViewMatrix());
 
 			glViewport(0,0,width, height);
 
-			world.scanForChunks(camera.Position);
 			glfwSwapBuffers(window);
 			glfwPollEvents();
 			InputHandler::notify();
+			world.scanForChunks(camera.getPosition());
+			world.update(physicsWorld, camera);
 
-			static bool flag = true;
-
-			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
-				Entity* entity = new Torch(camera.Position);
-				world.addEntity(entity);
-				//world.placeVoxel(Temp, camera);
-				//flag = false;
-			}
-			else {
-				flag = true;
-			}
-
-			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
 	
-				world.placeVoxel(Empty, camera);
-				//flag = false;
+			//Early testing function
+			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
+				entity->setPosition(glm::vec3(camera.getPosition()));
 			}
-			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
+	
+			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
+				world.placeVoxel(Empty, camera);
+			}
+
+
+			//glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
+			glClearColor(0.0, 0.0, 0.0, 1);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			world.update(physicsWorld,camera);
+		
 
 			//world.drawDirectionalShadows(camera);
 			world.drawPointShadows(camera);
-
-			
 			glViewport(0, 0, width, height);
-		
 	
-		
 			world.drawDebugHitboxes(debugShader);
-
 			world.drawEntities(chunkShader, camera);
 			world.drawWorld(chunkShader,camera);
-			world.drawClouds(cloudShader, camera);
+			world.drawClouds(camera);
 	
 		}
 	}
@@ -170,7 +142,6 @@ int main() {
 		app.run();
 
 	}
-
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
 		return EXIT_FAILURE;

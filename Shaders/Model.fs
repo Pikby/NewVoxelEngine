@@ -7,6 +7,6 @@ in vec2 Tex;
 uniform sampler2D objTexture;
 void main()
 {
-    vec3 color = Norm*0.5 +0.5;
-    FragColor = vec4(color,1);
+
+    FragColor = vec4(0.380, 0.180, 0,1);
 }
