@@ -25,21 +25,21 @@ struct PhysicsWorld {
 class World {
 private:
 	std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>> chunks;
-	DirectionalLight globalLighting;
-	PhysicsWorld physicsWorld;
 	std::vector<std::unique_ptr<Entity>> entityList;
 	std::vector<PointLight*> pointLightList;
-	unsigned int renderDistance = 20;
 
+	DirectionalLight globalLighting;
+	PhysicsWorld physicsWorld;
+
+	unsigned int renderDistance = 20;
+	bool drawDebugHitBoxes = false;
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(const glm::ivec3& pos);
-	std::optional<glm::ivec3> findLookingVoxel(Camera& camera);
 	inline glm::ivec3 getChunkPos(const glm::vec3& pos);
 	inline glm::ivec3 getLocalPos(const glm::vec3& pos);
 
-	unsigned int generateTextureFromNoise(const std::string& noiseString);
+	static unsigned int generateTextureFromNoise(const std::string& noiseString);
 
-	void drawQuad();
 public:
 	World();
 
@@ -75,9 +75,10 @@ public:
 	VoxelKey& getVoxel(const glm::ivec3& pos);
 
 	//Takes a camera argument and attempts to place a voxel wherever the camera is looking
-	void placeVoxel(VoxelKey vox, Camera& camera);
+	void placeVoxel(VoxelKey vox,const Camera& camera);
 
 	void addEntity(Entity* entity);
 
-	unsigned int performPingPong(const glm::vec2& dims, const unsigned int input);
+	void setDebugHitBoxes(bool b) { drawDebugHitBoxes = b; }
+
 };

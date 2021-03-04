@@ -16,18 +16,8 @@
 std::vector<unsigned int> Shader::shaderList;
 std::string Shader::filePath = "Shaders/";
 
-class MP3Instance {
-public:
-	void run() {
-		glfwInit();
-		makeWindow();
-		InputHandler::init(window);
-		mainLoop();
-		cleanup();
-	}
-
+class VoxelEngineInstance {
 private:
-
 	GLFWwindow* window;
 	void makeWindow() {
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -35,7 +25,7 @@ private:
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 		
-		window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+		window = glfwCreateWindow(800, 600, "Abyss 2.0", NULL, NULL);
 		if (window == NULL) {
 			std::cout << "Failed to create GLFW window" << std::endl;
 			glfwTerminate();
@@ -63,28 +53,15 @@ private:
 
 	void mainLoop() {	
 		World world;		
-		Entity* entity = new Torch(glm::vec3(10, 1, 0));
-		world.addEntity(entity);
-
-		Entity* entity2 = new Torch(glm::vec3(-10, 2, 0));
-		world.addEntity(entity2);
-
-		Entity* mainChar = new PlayerCharacter(glm::vec3(0, 0, 0));
-		world.addEntity(mainChar);
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
-		
 		glEnable(GL_DEPTH_TEST);
 		
 		Shader chunkShader("Chunk.fs", "Chunk.vs");
-		Shader normShader("Norm.fs", "Norm.gs", "Norm.vs");
 		Shader debugShader("DebugDrawer.fs", "DebugDrawer.vs");
 
 		Camera& camera = InputHandler::getCamera();
-
-
-
 		btDiscreteDynamicsWorld* physicsWorld = world.getPhysicsWorld();
 		while (!glfwWindowShouldClose(window)) {
 			int width, height;
@@ -103,22 +80,28 @@ private:
 			world.update(physicsWorld, camera);
 
 	
-			//Early testing function
+			//Early testing functions
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
-				entity->setPosition(glm::vec3(camera.getPosition()));
+				world.placeVoxel(Snow, camera);
+				//entity->setPosition(glm::vec3(camera.getPosition()));
+				//world.addEntity(new Snowball(camera.getPosition()));
 			}
 	
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
 				world.placeVoxel(Empty, camera);
 			}
 
+			if (InputHandler::pollKey(GLFW_KEY_F1)) {
+				world.setDebugHitBoxes(true);
+			}
+			else world.setDebugHitBoxes(false);
 
-			//glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
-			glClearColor(0.0, 0.0, 0.0, 1);
+			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
+			//glClearColor(0.0, 0.0, 0.0, 1);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		
 
-			//world.drawDirectionalShadows(camera);
+			world.drawDirectionalShadows(camera);
 			world.drawPointShadows(camera);
 			glViewport(0, 0, width, height);
 	
@@ -133,11 +116,21 @@ private:
 	void cleanup() {
 		glfwTerminate();
 	}
+
+
+public:
+	void run() {
+		glfwInit();
+		makeWindow();
+		InputHandler::init(window);
+		mainLoop();
+		cleanup();
+	}
 };
 
 
 int main() {
-	MP3Instance app;
+	VoxelEngineInstance app;
 	try {
 		app.run();
 

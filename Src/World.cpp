@@ -28,8 +28,8 @@ inline glm::ivec3 World::getLocalPos(const glm::vec3& pos) {
 }
 
 
-
-World::World() :globalLighting(glm::vec3(0.1,0.1,0.15),glm::vec3(0.1),glm::vec3(0.5)) {
+//globalLighting(glm::vec3(0.1f,0.1f,0.15f),glm::vec3(0.1f),glm::vec3(0.5f))
+World::World() {
 
 	physicsWorld.debugDrawer = std::make_unique<DebugDrawer>();
 	physicsWorld.collisionConfiguration = std::make_unique<btDefaultCollisionConfiguration>();
@@ -40,7 +40,7 @@ World::World() :globalLighting(glm::vec3(0.1,0.1,0.15),glm::vec3(0.1),glm::vec3(
 	
 	
 	physicsWorld.physicsWorld->setDebugDrawer(physicsWorld.debugDrawer.get());
-	physicsWorld.physicsWorld->setGravity(btVector3(0, -10, 0));
+	physicsWorld.physicsWorld->setGravity(btVector3(0.f, -10.f, 0.f));
 }
 
 
@@ -67,9 +67,14 @@ void World::drawWorld(Shader& shader, const Camera& camera) {
 	shader.use();
 	double time = glfwGetTime();
 
-	shader.setFloat("time", time);
+	shader.setFloat("time", float(time));
 	shader.setInt("translucent", 0);
 	shader.setVec3("cameraPos", camera.getPosition());
+
+	static glm::vec3 dir = glm::vec3(1,1,1);
+	//dir.x += 0.0001;
+	//dir.z += 0.0001;
+	globalLighting.setDirectionaLightDirection(glm::normalize(dir));
 
 	globalLighting.setShaderUniforms(shader);
 	globalLighting.setDirectionalShadowMatrices(shader, camera.getPosition());
@@ -92,8 +97,7 @@ void World::drawWorld(Shader& shader, const Camera& camera) {
 
 
 	pointLightList.clear();
-	//light.setShaderUniforms(shader);
-	//light.bindShadowTexture();
+
 
 	drawChunks(shader,camera.getPosition(),20);
 	drawTranslucentChunks(shader, camera);
@@ -101,7 +105,7 @@ void World::drawWorld(Shader& shader, const Camera& camera) {
 
 void World::drawChunks(Shader& shader, const glm::vec3& origin, unsigned int renderDistance) {
 
-	for (auto& chunk : chunks ) {
+	for (const auto& chunk : chunks ) {
 		glm::vec3 realPos = chunk.second->getChunkPos() * ChunkSize;
 		if (glm::distance(origin, realPos) < renderDistance*ChunkSize) {
 			chunk.second->draw(shader);
@@ -163,32 +167,11 @@ VoxelKey& World::getVoxel(const glm::ivec3& pos) {
 }
 
 
-std::optional<glm::ivec3> World::findLookingVoxel(Camera& camera) {
+void World::placeVoxel(VoxelKey vox,const Camera& camera) {
 	glm::vec3 front = camera.getFront();
 	glm::vec3 pos = camera.getPosition();
 
-	const float stepSize = 0.2;
-	const int maxSteps = 10000;
-
-	for (int i = 0; i < maxSteps; i++) {
-		glm::ivec3 voxPos = (pos + front * (i * stepSize));
-		Voxel vox = VoxelLookup[getVoxel(voxPos)];
-		if (vox.val < 0)
-		{
-			return voxPos;
-		}
-
-	}
-
-
-	return {};
-}
-
-void World::placeVoxel(VoxelKey vox,Camera& camera) {
-	glm::vec3 front = camera.getFront();
-	glm::vec3 pos = camera.getPosition();
-
-	const float stepSize = 0.1;
+	const float stepSize = 0.1f;
 	const int maxSteps = 10000;
 
 	for (int i = 0; i < maxSteps; i++) {
@@ -256,11 +239,6 @@ unsigned int World::generateTextureFromNoise(const std::string& noiseString) {
 	return texture;
 }
 
-void World::drawQuad() {
-	OpenGLCommon::drawQuad();
-}
-
-
 
 void World::drawClouds(const Camera& camera) {
 	static Shader cloudShader("Cloud.fs", "Cloud.vs");
@@ -275,7 +253,7 @@ void World::drawClouds(const Camera& camera) {
 
 	cloudShader.use();
 	cloudShader.setMat4("model", model);
-	cloudShader.setFloat("time", glfwGetTime());
+	cloudShader.setFloat("time", float(glfwGetTime()));
 	cloudShader.setFloat("cloudSpeed", 50);
 	cloudShader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
 	cloudShader.setInt("cloudTexture", 0);
@@ -284,7 +262,7 @@ void World::drawClouds(const Camera& camera) {
 	
 
 	glDisable(GL_CULL_FACE);
-	drawQuad();
+	OpenGLCommon::drawQuad();
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
@@ -309,18 +287,16 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 		else {
 			chunk++;
 		}
-
-
 	}
 
-
-
 	std::set<btRigidBody*> loadedChunks;
-	for (auto& entity : entityList) {
+	for (const auto& entity : entityList) {
 		float size = entity->getSize();
 		glm::vec3 pos = entity->getPosition();
 
 		static const glm::vec3 offsets[] = { {1,1,1},{-1,1,1},{1,-1,1},{-1,-1,1}, {1,1,-1},{-1,1,-1},{1,-1,-1},{-1,-1,-1} };
+
+		//Check if the entity is in a loaded chunk, if any of the chunks are not loaded, freeze the entity until it becomes loaded
 		bool isLoaded = true;
 		for (auto offset : offsets) {
 			glm::vec3 chunkPos = getChunkPos(pos + (size+3)*offset);
@@ -348,7 +324,6 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 		}
 		btRigidBody* body = entity->getRigidBody();
 		if (isLoaded) {
-			
 			body->activate();
 			physicsWorld->addRigidBody(body);
 		}
@@ -358,13 +333,13 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 
 	}
 	physicsWorld->stepSimulation(1 / 60.0f, 10);
-	physicsWorld->debugDrawWorld();
+	if(drawDebugHitBoxes) physicsWorld->debugDrawWorld();
 
-	for (auto& entity : entityList) {
+	for (const auto& entity : entityList) {
 		physicsWorld->removeRigidBody(entity->getRigidBody());
 	}
 
-	for (auto body : loadedChunks) {
+	for (const auto& body : loadedChunks) {
 		physicsWorld->removeRigidBody(body);
 	}
 
@@ -376,7 +351,7 @@ void World::drawEntities(Shader& shader, const Camera& camera) {
 	shader.use();
 	shader.setMat4("view", camera.getViewMatrix());
 	globalLighting.bindShadowTexture();
-	for (auto& entity : entityList) {
+	for (const auto& entity : entityList) {
 		entity->draw(shader, camera);
 	}
 }
@@ -406,7 +381,7 @@ void World::drawPointShadows(const Camera& camera) {
 	static Shader shadowShader("ChunkPointShadow.fs", "ChunkPointShadow.vs", "ChunkPointShadow.gs");
 	shadowShader.use();
 
-	for (auto& entity : entityList) {
+	for (const auto& entity : entityList) {
 		if (entity->hasPointLight()) {
 			PointLight* light = entity->getPointLight();
 		
@@ -414,7 +389,7 @@ void World::drawPointShadows(const Camera& camera) {
 			light->setShadowMatrices(shadowShader);
 			light->bindShadowBuffer();
 			pointLightList.push_back(light);
-			drawChunks(shadowShader, light->getPosition(), (light->getRadius() / ChunkSize) + 2);
+			drawChunks(shadowShader, light->getPosition(), unsigned int((light->getRadius() / ChunkSize) + 2));
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 	}

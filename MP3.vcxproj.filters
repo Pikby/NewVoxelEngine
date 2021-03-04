@@ -53,16 +53,10 @@
     <ClInclude Include="Include\Array3D.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Include\BufferObject.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Include\Camera.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Chunk.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\CollisionObject.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Include\Color.h">
@@ -107,9 +101,6 @@
     <ClInclude Include="Src\Include\Chunk.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Include\Common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Src\Include\Inputs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -119,7 +110,7 @@
     <ClInclude Include="Src\Include\stb_image.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Src\Include\Texture.h">
+    <ClInclude Include="Include\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -145,5 +136,15 @@
     <None Include="Shaders\Norm.vs" />
     <None Include="Shaders\PingPong.fs" />
     <None Include="Shaders\PingPong.vs" />
+    <None Include="README.md" />
+    <None Include=".gitignore" />
+    <None Include="Docs\Features.md" />
+    <None Include="Docs\Implementations.md" />
+    <None Include="Docs\Plans.md" />
+    <None Include="Assets\torch.fbx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="Assets\sphere.obj" />
+    <Object Include="Assets\bunny.obj" />
   </ItemGroup>
 </Project>

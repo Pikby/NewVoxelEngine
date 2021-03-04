@@ -72,10 +72,10 @@ const int ChunkSize = 32;
 
 class ChunkCollisionObject{
 private:
-	std::unique_ptr<btTriangleIndexVertexArray> triMesh = nullptr;
-	std::unique_ptr<btTriangleMeshShape> bvhMesh = nullptr;
-	std::unique_ptr<btDefaultMotionState> motion = nullptr;
-	std::unique_ptr<btRigidBody> meshBody = nullptr;
+	std::unique_ptr<btTriangleIndexVertexArray> triMesh;
+	std::unique_ptr<btTriangleMeshShape> bvhMesh;
+	std::unique_ptr<btDefaultMotionState> motion;
+	std::unique_ptr<btRigidBody> meshBody;
 public:
 	ChunkCollisionObject() {}
 
@@ -93,7 +93,7 @@ public:
 		meshBody = std::make_unique<btRigidBody>(rbInfo);
 		meshBody->setFriction(0.5);
 		meshBody->setHitFraction(1);
-		meshBody->setRestitution(0.1);
+		meshBody->setRestitution(0.1f);
 	}
 	
 	btRigidBody* getRigidBody() {
@@ -119,7 +119,7 @@ private:
 	std::shared_future<void> buildTask;
 
 	std::shared_ptr<ChunkMesh> chunkMesh;
-	std::shared_ptr<btTriangleIndexVertexArray> collisionMesh = nullptr;
+	std::shared_ptr<btTriangleIndexVertexArray> collisionMesh;
 
 	auto getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
 
@@ -137,11 +137,12 @@ public:
 
 	//All neighbours should exist in the chunktable before calling this function, function finds all surrouding chunks and loads them
 	void setNeighbours(const glm::ivec3& pos, std::unordered_map<glm::ivec3, std::shared_ptr<Chunk>>& chunks);
-	VoxelKey& getVoxel(const glm::ivec3& po);
+	VoxelKey& getVoxel(const glm::ivec3& pos);
 
 	//Draws the given chunk with a shader, if the mesh is not valid/built function will return, otherwise it will automatically build the buffers
 	void draw(Shader& shader);
 
+	//Draws the translucent part of the chunk only, done at the end of the draw calls
 	void drawTranslucent(Shader& shader);
 	//fills out VoxelArray using randomly generated algorithm
 	void generateChunk();
@@ -153,8 +154,9 @@ public:
 
 	void update();
 
-	btRigidBody* getPhysicsBody();
+	btRigidBody* const getPhysicsBody();
 
+	//Checks if all chunk threads are finished and the chunk is safe to delete
 	bool safeToDelete();
 	Chunk(const glm::vec3& pos);
 	~Chunk();

@@ -19,11 +19,11 @@ public:
     {
         loadModel(path);
     }
-    void Draw(Shader& shader) {
+    void draw(Shader& shader) {
 
 
         for (auto mesh : meshes) {
-            mesh.Draw(shader);
+            mesh.draw(shader);
         }
     }
 private:

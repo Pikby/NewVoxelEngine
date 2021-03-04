@@ -5,7 +5,7 @@ typedef uint8_t VoxelKey;
 
 struct Voxel {
 	glm::vec4 color;
-	int8_t val;
+	int val;
 
 	bool operator==(Voxel& rhs) const {
 		return color == rhs.color && val == rhs.val;

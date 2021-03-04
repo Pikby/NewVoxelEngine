@@ -1,5 +1,7 @@
 #define GLM_FORCE_AVX
+
 #define GLM_ENABLE_EXPERIMENTAL
+
 #include <iostream>>
 #include <FastNoise/FastNoise.h>
 
@@ -180,7 +182,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 					count++;
 				}
 
-				totalColor = totalColor / glm::vec4(count-1);
+				totalColor = totalColor / glm::vec4(float(count-1));
 
 				static const glm::ivec3 dir[4] = { {0,1,8},{3,2,9},{4,5,10},{7,6,11} };
 				glm::vec3 norm(0);
@@ -211,7 +213,7 @@ std::shared_ptr<ChunkMesh> Chunk::calculateMesh(std::shared_ptr<CubeArray<VoxelK
 			for (int z = 0; z < ChunkSize + 1; z++) {
 				glm::ivec3 curPos(x, y, z);
 				ChunkCube chunkCube = surfaceArray.get(curPos);
-				int vox[8];
+				size_t vox[8];
 				for (int i = 0; i < 8; i++) {
 					vox[i] = surfaceArray.get(curPos + cubeCorners[i]).indice;
 				}
@@ -374,7 +376,7 @@ void Chunk::generateChunk() {
 	for (int x = 0; x < ChunkSize; x++) {
 		for (int z = 0; z < ChunkSize; z++) {
 			double height = heightMap[x + z * ChunkSize];
-			int heightI = glm::floor(height * 100);
+			int heightI = int(glm::floor(height * 100));
 			for (int y = 0; y < ChunkSize; y++) {
 				VoxelKey& vox = getVoxel(glm::ivec3(x, y, z));
 				glm::ivec3 realCoords = glm::ivec3(x,y,z) + glm::ivec3((chunkPos) * ChunkSize);
@@ -408,18 +410,18 @@ VoxelKey& Chunk::getVoxel(const glm::ivec3& pos) {
 	return voxelArray.get(pos);
 }
 
-btRigidBody* Chunk::getPhysicsBody() {
+btRigidBody* const Chunk::getPhysicsBody() {
 	return collisionObject.getRigidBody();  
 }
 
 void Chunk::update() {
+
+	//Make sure main thread does not stall on futures, if they are not ready just skip
 	if (buildTask.valid()) {
 		if (buildTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 			buildTask.get();
 		}
 	}
-
-
 	if (meshTask.valid()) {
 		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
 			try {

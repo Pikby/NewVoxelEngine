@@ -24,6 +24,7 @@
     <ProjectGuid>{3c152f52-c5fb-400e-88ea-9742294abe96}</ProjectGuid>
     <RootNamespace>MP3</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>VoxelEngine</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -172,10 +173,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Include\Array3D.h" />
-    <ClInclude Include="Include\BufferObject.h" />
     <ClInclude Include="Include\Camera.h" />
     <ClInclude Include="Include\Chunk.h" />
-    <ClInclude Include="Include\CollisionObject.h" />
     <ClInclude Include="Include\Color.h" />
     <ClInclude Include="Include\Common.h" />
     <ClInclude Include="Include\DebugDrawer.h" />
@@ -188,15 +187,20 @@
     <ClInclude Include="Include\PlayerCharacter.h" />
     <ClInclude Include="Include\Shader.h" />
     <ClInclude Include="Src\Include\stb_image.h" />
-    <ClInclude Include="Src\Include\Texture.h" />
+    <ClInclude Include="Include\Texture.h" />
     <ClInclude Include="Include\Voxel.h" />
     <ClInclude Include="Include\World.h" />
     <ClInclude Include="Src\Include\Chunk.h" />
-    <ClInclude Include="Include\Common.h" />
     <ClInclude Include="Src\Include\Inputs.h" />
     <ClInclude Include="Src\Include\World.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include=".gitignore" />
+    <None Include="Assets\torch.fbx" />
+    <None Include="Docs\Features.md" />
+    <None Include="Docs\Implementations.md" />
+    <None Include="Docs\Plans.md" />
+    <None Include="README.md" />
     <None Include="Shaders\Chunk.fs" />
     <None Include="Shaders\Chunk.vs" />
     <None Include="Shaders\ChunkDirShadow.fs" />
@@ -216,6 +220,10 @@
     <None Include="Shaders\PingPong.fs" />
     <None Include="Shaders\PingPong.vs" />
     <None Include="torch.fbx" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="Assets\bunny.obj" />
+    <Object Include="Assets\sphere.obj" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

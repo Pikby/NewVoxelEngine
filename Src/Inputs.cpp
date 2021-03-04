@@ -26,7 +26,11 @@ void InputHandler::init(GLFWwindow* window) {
 	glfwSetMouseButtonCallback(window, InputHandler::mouseButtonCallback);
 }
 
-void InputHandler::processMouseMovement(GLFWwindow* window, double xpos, double ypos) {
+void InputHandler::processMouseMovement(GLFWwindow* window, double Xpos, double Ypos) {
+
+	float xpos = float(Xpos);
+	float ypos = float(Ypos);
+
 	static float lastX, lastY;
 	static bool firstMouse = true;
 	if (firstMouse)
@@ -72,16 +76,16 @@ void InputHandler::notify() {
 void InputHandler::handleAction(Action action) {
 	switch (action) {
 	case(Action::MoveForward):
-		camera.processKeyboard(Camera_Movement::FORWARD, 0.1);
+		camera.processKeyboard(Camera_Movement::FORWARD, 0.1f);
 		break;
 	case(Action::MoveBackwards):
-		camera.processKeyboard(Camera_Movement::BACKWARD, 0.1);
+		camera.processKeyboard(Camera_Movement::BACKWARD, 0.1f);
 		break;
 	case(Action::MoveLeft):
-		camera.processKeyboard(Camera_Movement::LEFT, 0.1);
+		camera.processKeyboard(Camera_Movement::LEFT, 0.1f);
 		break;
 	case(Action::MoveRight):
-		camera.processKeyboard(Camera_Movement::RIGHT, 0.1);
+		camera.processKeyboard(Camera_Movement::RIGHT, 0.1f);
 		break;
 	case(Action::PrimaryAction):
 		//std::cout << "left click\n";

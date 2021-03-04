@@ -12,7 +12,7 @@ public:
 
 
 	unsigned int shadowTextureWidth = 4 * 1024;
-	Light(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(1), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =32)
+	Light(const glm::vec3& AmbientColor, const glm::vec3& DiffuseColor, const glm::vec3& SpecularColor, float SpecularExponent)
 		: ambientColor(AmbientColor), diffuseColor(DiffuseColor), specularColor(SpecularColor), specularExponent(SpecularExponent) {}
 
 
@@ -27,14 +27,13 @@ public:
 class DirectionalLight : public Light{
 private:
 	const unsigned shadowTextureOffset = 1;
-	const double shadowWorldWidth = 500;
+	const float shadowWorldWidth = 500;
 
 	unsigned int depthMapTexture = 0, depthMapFBO = 0, depthMap = 0, finalShadowTexture = 0;
 	glm::vec3 globalLightDir = glm::vec3(0.1, 0.5, 0.1);
 
 public:
-	DirectionalLight() {}
-	DirectionalLight(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(1), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =32)
+	DirectionalLight(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(0.5), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =32)
 		: Light(AmbientColor,DiffuseColor, SpecularColor, SpecularExponent){}
 
 	void setGlobaLightDirection(const glm::vec3& dir) {
@@ -48,7 +47,7 @@ public:
 		shader.setVec3("directionalLight.specular", specularColor);
 		shader.setFloat("directionalLight.specularExponent", specularExponent);
 
-		shader.setVec3("directionalLight.direction", globalLightDir);
+		shader.setVec3("directionalLight.direction", glm::normalize(globalLightDir));
 		shader.setInt("directionalLight.shadowTexture", shadowTextureOffset);
 	}
 
@@ -98,14 +97,14 @@ public:
 		glClear(GL_DEPTH_BUFFER_BIT);
 	}
 
-	void setDirectionalShadowMatrices(Shader& shader, glm::vec3 cameraPos) {
+	void setDirectionalShadowMatrices(Shader& shader,const glm::vec3& cameraPos) {
 
-		const static glm::mat4 shadowProjection = glm::ortho(-shadowWorldWidth, shadowWorldWidth, -shadowWorldWidth, shadowWorldWidth, 1.0, shadowWorldWidth * 5);
+		const static glm::mat4 shadowProjection = glm::ortho(-shadowWorldWidth, shadowWorldWidth, -shadowWorldWidth, shadowWorldWidth, 1.0f, shadowWorldWidth * 5);
 		shader.use();
 		shader.setMat4("shadowProjection",shadowProjection);
 		glm::vec3 shadowDir = glm::vec3(1);
 		glm::vec3 shadowOrigin = cameraPos + shadowDir*glm::vec3(2*shadowWorldWidth);
-		glm::mat4 shadowView = glm::lookAt(shadowOrigin, shadowOrigin-glm::vec3(1,1,1), glm::vec3(0, 1, 0));
+		glm::mat4 shadowView = glm::lookAt(shadowOrigin, shadowOrigin-globalLightDir, glm::vec3(0, 1, 0));
 		shader.setMat4("shadowView", shadowView);
 		
 	}
@@ -139,7 +138,7 @@ public:
 		}
 
 		bool horizontal = true, first_iteration = true;
-		int amount = 4;
+		unsigned int amount = 4;
 		pingPongShader.use();
 		for (unsigned int i = 0; i < amount; i++)
 		{
@@ -160,6 +159,10 @@ public:
 
 	}
 
+	void setDirectionaLightDirection(const glm::vec3& pos) {
+		globalLightDir = glm::normalize(pos);
+	}
+
 	~DirectionalLight() {
 		glDeleteFramebuffers(1,&depthMapFBO);
 		glDeleteTextures(1,&depthMapTexture);
@@ -172,7 +175,7 @@ public:
 class PointLight : public Light {
 private:
 	glm::vec3 position;
-	double radius =100;
+	float radius =100;
 
 	const unsigned shadowTextureOffset = 2;
 	unsigned int shadowCubeMapFBO=0,shadowCubeMap = 0;
@@ -197,8 +200,8 @@ private:
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	}
 public:
-	PointLight(glm::vec3 Position = glm::vec3(0), glm::vec3 Ambient = glm::vec3(0.2), glm::vec3 Diffuse = glm::vec3(0.5),
-		glm::vec3 Specular = glm::vec3(1.0), double Radius = 15) : Light(Ambient,Diffuse,Specular),position(Position) , radius(Radius) {
+	PointLight(glm::vec3 Position = glm::vec3(0), glm::vec3 Ambient = glm::vec3(0.2f), glm::vec3 Diffuse = glm::vec3(0.5f),
+		glm::vec3 Specular = glm::vec3(1.0f), double Radius = 15) : Light(Ambient,Diffuse,Specular,32.0f),position(Position) , radius(Radius) {
 
 		shadowTextureWidth = 1024;
 	}

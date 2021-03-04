@@ -5,7 +5,7 @@
 
 static const int byteCount = 4;
 static const int offset = byteCount * (8 / 4);
-static const int maxVal = pow(2, offset) - 1;
+static const int maxVal = int(pow(2, offset)) - 1;
 class Color {
 private:
 	uint32_t color2byte;
