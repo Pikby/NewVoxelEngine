@@ -22,7 +22,7 @@ The engine implements bullet3s physics engine, using a 1 to 1 collision mesh for
 ### Real Time Shadows
 ![Point shadows](Demos/PointShadows.gif)
 
-The engine also implements Dynamic point and dirctional shadows to allow for an interesting and ever changing light scape
+The engine also implements Dynamic point and directional shadows to allow for an interesting and ever changing light scape
 
 ### And alot more
 The engine also implements procedurally generate clouds and water waves which can be found throughout the environments.

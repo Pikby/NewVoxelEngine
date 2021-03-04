@@ -1,5 +1,5 @@
 The following is the overall design goals for the feel of the game, what the general gameplay goals are and what features to implement.
-This is what the game would become with enough time and effort
+This is what the game would become with enough time and effort. These are vary rough ideas and are subject to change as they get implemented
 
 ### GamePlay:
 #### Environment:
@@ -24,3 +24,6 @@ This is what the game would become with enough time and effort
 #### Movement
 * Movement should feel fluid, and have a sense of progression.
 * Go from normal movement, to unlocked double jumps, to eventually flight, as the player progresses through the area
+#### Building
+* Building and destruction will be less done by the player and more done by the players items (Use explosives for destruction, and magic items for construction)
+* Real player building can be premade using assets (such as a starting shack)

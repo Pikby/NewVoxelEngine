@@ -83,8 +83,6 @@ private:
 			//Early testing functions
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
 				world.placeVoxel(Snow, camera);
-				//entity->setPosition(glm::vec3(camera.getPosition()));
-				//world.addEntity(new Snowball(camera.getPosition()));
 			}
 	
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
@@ -97,7 +95,6 @@ private:
 			else world.setDebugHitBoxes(false);
 
 			glClearColor(154.0/255.0, 203.0/255.0, 1.0, 1.0f);
-			//glClearColor(0.0, 0.0, 0.0, 1);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		
 

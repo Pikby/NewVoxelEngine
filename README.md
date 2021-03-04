@@ -1,6 +1,7 @@
 # Abyss 2.0 (Working title)
 
 A complete recode of an older voxel graphics engine, using new techniques.
+The code is going through heavy development, so not all images may be accurate to the current build
 
 Click [here](Docs/Features.md) for a demonstration of currently implemented features
 
