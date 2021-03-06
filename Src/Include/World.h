@@ -31,7 +31,10 @@ private:
 	DirectionalLight globalLighting;
 	PhysicsWorld physicsWorld;
 
-	unsigned int renderDistance = 20;
+	float renderDistance = 10;
+
+
+
 	bool drawDebugHitBoxes = false;
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(const glm::ivec3& pos);
@@ -40,6 +43,7 @@ private:
 
 	static unsigned int generateTextureFromNoise(const std::string& noiseString);
 
+	void updateSurroundingVoxels(const glm::ivec3& pos);
 public:
 	World();
 
@@ -49,16 +53,16 @@ public:
 	void loadChunk(const glm::ivec3& pos);
 
 	//Draws all loaded chunks in the world
-	void drawChunks(Shader& shader, const glm::vec3& origin, unsigned int renderDistance);
-	void drawTranslucentChunks(Shader& shader, const Camera& camera);
+	void drawChunks(Shader& shader, const Camera& camera, unsigned int renderDistance, bool translucent = false);
 
 	void drawClouds(const Camera& camera);
 	
-	void drawEntities(Shader& shader, const Camera& camera);
+	void drawEntities( const Camera& camera);
 
 	void drawDebugHitboxes(Shader& shader) {
 		physicsWorld.debugDrawer->draw(shader);
 	}
+	std::shared_ptr<Chunk> getChunk(const glm::ivec3& chunkPos);
 
 	void drawDirectionalShadows(const Camera& camera);
 
@@ -66,6 +70,7 @@ public:
 	//Scans for chunks around position and unloads them 
 	void scanForChunks(const glm::vec3& pos);
 
+	VoxelKey& getAndUpdateVoxel(const glm::ivec3& pos);
 
 	void drawWorld(Shader& shader, const Camera& camera);
 
@@ -80,5 +85,7 @@ public:
 	void addEntity(Entity* entity);
 
 	void setDebugHitBoxes(bool b) { drawDebugHitBoxes = b; }
+
+	void generateTree(const glm::ivec3& pos);
 
 };

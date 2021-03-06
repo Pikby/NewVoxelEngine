@@ -50,8 +50,8 @@ void World::loadChunk(const glm::ivec3& pos) {
 		chunks.insert({ pos, std::make_shared<Chunk>(pos) });
 	}
 
-	for (int i = 0; i < 7; i++) {
-		glm::ivec3 offset = chunkNeighboursTable[i] + pos;
+	for (auto& neigh : chunkNeighboursTable) {
+		glm::ivec3 offset = neigh + pos;
 		if (!chunks.contains(offset)) {
 			chunks.insert({ offset, std::make_shared<Chunk>(offset) });
 		}
@@ -87,35 +87,21 @@ void World::drawWorld(Shader& shader, const Camera& camera) {
 	}
 	*/
 
+	/*
 	pointLightList[0]->setShaderUniforms(shader, 0);
 	pointLightList[0]->bindShadowTexture(0);
 
 	pointLightList[1]->setShaderUniforms(shader, 1);
 	pointLightList[1]->bindShadowTexture(1);
-	
+	*/
 	//shader.setInt("pointLightCount", std::min(int(pointLightList.size()), 10));
 
 
+	
+
 	pointLightList.clear();
+	drawChunks(shader, camera,renderDistance);
 
-
-	drawChunks(shader,camera.getPosition(),20);
-	drawTranslucentChunks(shader, camera);
-}
-
-void World::drawChunks(Shader& shader, const glm::vec3& origin, unsigned int renderDistance) {
-
-	for (const auto& chunk : chunks ) {
-		glm::vec3 realPos = chunk.second->getChunkPos() * ChunkSize;
-		if (glm::distance(origin, realPos) < renderDistance*ChunkSize) {
-			chunk.second->draw(shader);
-		}
-		
-	}
-
-}
-void World::drawTranslucentChunks(Shader& shader,const Camera& camera){
-	shader.use();
 	shader.setInt("translucent", 1);
 	glActiveTexture(GL_TEXTURE0);
 	static unsigned int waterTexture = generateTextureFromNoise("FwAAAIC/AACAPwAAAAAAAIA/GQAJAAEDAM3MzD0=");
@@ -123,20 +109,33 @@ void World::drawTranslucentChunks(Shader& shader,const Camera& camera){
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_CULL_FACE);
-	for (auto& chunk : chunks ) {
-		chunk.second->drawTranslucent(shader);
-	}
+	drawChunks(shader, camera, renderDistance, true);
 	glEnable(GL_CULL_FACE);
+
+
 }
 
+void World::drawChunks(Shader& shader, const Camera& camera, unsigned int renderDistance,bool translucent) {
+	for (const auto& chunk : chunks ) {
+		glm::vec3 realPos = glm::vec3(chunk.second->getChunkPos() * ChunkSize) + glm::vec3(0.5f*ChunkSize);
+		if (glm::distance(camera.getPosition(), realPos) < (renderDistance*2)*ChunkSize) {
+			if (!translucent) {
+				chunk.second->draw(shader);
+			}
+			else {
+				chunk.second->drawTranslucent(shader);
+			}
+		}	
+
+	}
+}
+ 
+
 void World::scanForChunks(const glm::vec3& pos) {
-	const int renderDistance = 12;
 	for (int x = -renderDistance; x < renderDistance; x++) {
 		for (int y = -renderDistance; y < renderDistance; y++) {
 			for (int z = -renderDistance; z < renderDistance; z++) {
 				glm::ivec3 curPos = glm::vec3(getChunkPos(pos))+glm::vec3(x, y, z);
-
-
 				if (!chunks.contains(curPos)) {
 					loadChunk(curPos);
 					continue;
@@ -153,11 +152,36 @@ void World::scanForChunks(const glm::vec3& pos) {
 }
 
 
+std::shared_ptr<Chunk> World::getChunk(const glm::ivec3& chunkPos) {
+
+	if(chunks.count(chunkPos) != 1){
+		loadChunk(chunkPos);
+	}
+	return chunks[chunkPos];
+}
+
+void World::updateSurroundingVoxels(const glm::ivec3& pos) {
+	for (int x = -1; x <= 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			for (int z = -1; z <= 1; z++) {
+				glm::ivec3 chunkPos = getChunkPos(pos + glm::ivec3(x, y, z));
+				getChunk(chunkPos)->setHasChanges(true);
+			}
+		}
+	}
+
+}
+
+VoxelKey& World::getAndUpdateVoxel(const glm::ivec3& pos) {
+	updateSurroundingVoxels(pos);
+	return getVoxel(pos);
+
+}
+
 VoxelKey& World::getVoxel(const glm::ivec3& pos) {
 	const glm::ivec3 chunkPos = getChunkPos(pos);
 	const glm::ivec3 localPos = getLocalPos(pos);
 
-	
 	if (!chunks.contains(chunkPos)) {
 		loadChunk(chunkPos);
 	}
@@ -191,6 +215,7 @@ void World::placeVoxel(VoxelKey vox,const Camera& camera) {
 
 				loadNeighbouringChunks(newPos);
 			}
+						
 			return;
 		}
 
@@ -271,13 +296,12 @@ void World::drawClouds(const Camera& camera) {
 
 
 void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
-
 	for (auto chunk = chunks.cbegin(); chunk != chunks.cend(); ) {
-		chunk->second->update();
+
 	
 		float magnitude = glm::distance(glm::vec3(chunk->second->getChunkPos() * ChunkSize), camera.getPosition());
-		if (magnitude > renderDistance) {
-			if ((chunk->second.use_count() == 1) && chunk->second->safeToDelete()) {
+		if (magnitude > (float(renderDistance*ChunkSize*2))) {
+			if ((chunk->second.use_count() == 1)) {
 				chunks.erase(chunk++);
 			}
 			else {
@@ -285,6 +309,19 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 			}
 		}
 		else {
+			auto structures = chunk->second->update();
+			if (structures != nullptr) {
+				for (auto& structure : (*structures.get())) {
+					int structureId = structure.w;
+					glm::ivec3 structurePos = glm::ivec3(structure);
+
+					switch (structureId) {
+					case(Structures::Tree):
+						generateTree(structurePos);
+						break;
+					}
+				}
+			}
 			chunk++;
 		}
 	}
@@ -295,13 +332,10 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 		glm::vec3 pos = entity->getPosition();
 
 		static const glm::vec3 offsets[] = { {1,1,1},{-1,1,1},{1,-1,1},{-1,-1,1}, {1,1,-1},{-1,1,-1},{1,-1,-1},{-1,-1,-1} };
-
 		//Check if the entity is in a loaded chunk, if any of the chunks are not loaded, freeze the entity until it becomes loaded
 		bool isLoaded = true;
 		for (auto offset : offsets) {
 			glm::vec3 chunkPos = getChunkPos(pos + (size+3)*offset);
-			
-			
 			if (chunks.count(chunkPos) != 0) {
 				auto chunk = chunks.at(chunkPos);
 				if (!chunk->isLoaded()) {
@@ -342,17 +376,12 @@ void World::update(btDiscreteDynamicsWorld* physicsWorld,const Camera& camera) {
 	for (const auto& body : loadedChunks) {
 		physicsWorld->removeRigidBody(body);
 	}
-
-	
-
 }
 
-void World::drawEntities(Shader& shader, const Camera& camera) {
-	shader.use();
-	shader.setMat4("view", camera.getViewMatrix());
+void World::drawEntities(const Camera& camera) {
 	globalLighting.bindShadowTexture();
 	for (const auto& entity : entityList) {
-		entity->draw(shader, camera);
+		entity->draw(camera);
 	}
 }
 
@@ -368,7 +397,7 @@ void World::drawDirectionalShadows(const Camera& camera) {
 	globalLighting.setDirectionalShadowMatrices(shadowShader, camera.getPosition());
 	globalLighting.bindShadowBuffer();
 		glDisable(GL_CULL_FACE);
-		drawChunks(shadowShader,camera.getPosition(),renderDistance);
+		drawChunks(shadowShader,camera,renderDistance);
 		glEnable(GL_CULL_FACE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	globalLighting.blurShadows();
@@ -389,10 +418,55 @@ void World::drawPointShadows(const Camera& camera) {
 			light->setShadowMatrices(shadowShader);
 			light->bindShadowBuffer();
 			pointLightList.push_back(light);
-			drawChunks(shadowShader, light->getPosition(), unsigned int((light->getRadius() / ChunkSize) + 2));
+			drawChunks(shadowShader, camera, unsigned int((light->getRadius() / ChunkSize) + 2));
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		}
 	}
 
 	return;
+}
+
+
+int getRandomInt(int lower, int upper) {
+	return (rand() % (upper+1 - lower)) + lower;
+}
+
+
+void World::generateTree(const glm::ivec3& pos) {
+	int height = getRandomInt(12, 16);
+	int leafHeight = getRandomInt(4, 8);
+	for (int i = 0; i < (height-leafHeight); i++) {
+		getVoxel(pos + glm::ivec3(0, i, 0)) = VoxelTypes::Wood;
+	}
+
+	//getVoxel(pos + glm::ivec3(0, height, 0)) = VoxelTypes::Leaves;
+	for (int i = 1; i < leafHeight; i++) {
+		for (int x = -i + getRandomInt(0,1); x <= i - getRandomInt(0, 1); x++) {
+			for (int z = -i + getRandomInt(0, 1); z <= i - getRandomInt(0, 1); z++) {
+				getVoxel(pos + glm::ivec3(x, height - (i * 2), z)) = VoxelTypes::Leaves;
+				getVoxel(pos + glm::ivec3(x, height - (i * 2 + 1), z)) = VoxelTypes::Leaves;
+			}
+		}
+		
+	}
+
+	/*
+	glm::ivec3 chunkPos = getChunkPos(pos);
+	for (int x = -1; x <= 1; x++) {
+		for (int y = -1; y <= 1; y++) {
+			for (int z = -1; z <= 1; z++) {
+
+				if (chunks.count(chunkPos + glm::ivec3(x, y, z)) == 1)
+				{
+					getChunk(chunkPos + glm::ivec3(x, y, z))->setHasChanges(true);
+				}
+				
+			}
+		}
+	}
+	*/
+	//loadChunk(getChunkPos(pos));;
+
+
+
 }

@@ -54,7 +54,7 @@ auto Chunk::getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chu
 				glm::ivec3 curPos(x, y, z);
 
 				if (x < ChunkSize && y < ChunkSize && z < ChunkSize) {
-					fullVoxels->set(curPos, voxelArray.get(curPos));
+					fullVoxels->set(curPos, voxelArray->get(curPos));
 					continue;
 				}
 
@@ -62,20 +62,16 @@ auto Chunk::getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chu
 				for (int j = 0; j < 7; j++) {
 					//if (glm::all(glm::greaterThanEqual(curPos, glm::ivec3(ChunkSize * chunkNeighboursTable[j])))) { slow on cpu profiler
 					if (curPos.x >= ChunkSize * chunkNeighboursTable[j].x && curPos.y >= ChunkSize * chunkNeighboursTable[j].y && curPos.z >= ChunkSize * chunkNeighboursTable[j].z) {
-						if (auto neigh = chunkNeighbours[j]) {
-							VoxelKey vox = neigh->getVoxel(curPos - glm::ivec3(ChunkSize * chunkNeighboursTable[j]));
-							fullVoxels->set(curPos, vox);
-							isOutsideChunk = true;
-							break;
-						}
-						else {
-							//std::cout << "Fatal Error finding neighbour in memory, ABORT\n";
-							throw - 1;
-						}
+						auto neigh = chunkNeighbours[j];
+						VoxelKey vox = neigh->getVoxel(curPos - glm::ivec3(ChunkSize * chunkNeighboursTable[j]));
+						fullVoxels->set(curPos, vox);
+						isOutsideChunk = true;
+						break;
+				
 					}
 				}
 				if (!isOutsideChunk) {
-					fullVoxels->set(curPos, voxelArray.get(curPos));
+					fullVoxels->set(curPos, voxelArray->get(curPos));
 				}
 			}
 		}
@@ -307,6 +303,7 @@ BufferObject Chunk::buildBufferObject(std::vector<ChunkVertex>& surfacePoints, s
 }
 
 void Chunk::mesh() {
+	if (chunkFlag == ChunkFlags::Unloaded) return;
 	chunkFlag = ChunkFlags::QueuedToMesh;
 	std::array<std::shared_ptr<Chunk>,7> chunkNeighbours;
 	for (int i = 0; i < 7;i++) {
@@ -357,19 +354,14 @@ Chunk::~Chunk(){
 }
 
 
-void generateEnvironmentObjects() {
-	for (int x = 0; x < ChunkSize; x++) {
-		for (int z = 0; z < ChunkSize; z++) {
-
-		}
-	}
-}
 
 
 
-void Chunk::generateChunk() {
+StructureList Chunk::generateChunk() {
 	static const FastNoise::SmartNode<> perlinNoise = FastNoise::NewFromEncodedNodeTree("EQADAAAAAAAAQBAAAAAAPxkAEwCamRk/DQAEAAAAAAAgQAkAAAAAAD8AAAAAPwEEAAAAAAAAAEBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgD8AAAAAPwAAAAAA");
 	float heightMap[ChunkSize * ChunkSize];
+
+	auto structureGenerationList = std::make_shared<std::vector<glm::ivec4>>();
 
 	perlinNoise->GenUniformGrid3D(heightMap, chunkPos.x * ChunkSize, 0, chunkPos.z * ChunkSize,ChunkSize, 1,ChunkSize, 0.005f, 1337);
 	bool isEmpty = true;
@@ -383,6 +375,10 @@ void Chunk::generateChunk() {
 		
 				if (realCoords.y == heightI) {
 					vox = VoxelTypes::Snow;
+
+					if ((rand() % 500 == 0) && realCoords.y > -150) {
+						structureGenerationList->push_back(glm::ivec4(realCoords, Structures::Tree));
+					}
 				}
 				else if (realCoords.y < heightI) {
 					vox = VoxelTypes::Dirt;
@@ -393,59 +389,69 @@ void Chunk::generateChunk() {
 			}
 		}
 	}
-	generateEnvironmentObjects();
+
+	return structureGenerationList;
 }
 
 
-Chunk::Chunk(const glm::vec3& pos) : voxelArray(VoxelTypes::Empty), chunkPos(pos) {
+Chunk::Chunk(const glm::vec3& pos) : voxelArray(std::make_unique<CubeArray<VoxelKey, ChunkSize>>(VoxelTypes::Empty)), chunkPos(pos) {
 	buildTask = std::async(std::launch::async, &Chunk::generateChunk, this);
-	chunkFlag = ChunkFlags::LoadedInRAM;
+	chunkFlag = ChunkFlags::Unloaded;
 }
 
 bool Chunk::safeToDelete() {
-	return !buildTask.valid() && !meshTask.valid();
+	return (!(chunkFlag == ChunkFlags::LoadedInRAM) && !(meshTask.valid()));
 }
 
 VoxelKey& Chunk::getVoxel(const glm::ivec3& pos) {
-	return voxelArray.get(pos);
+	return voxelArray->get(pos);
+}
+
+VoxelKey& Chunk::getVoxelWithChanges(const glm::ivec3& pos) {
+	hasChanges = true;
+	return voxelArray->get(pos);
 }
 
 btRigidBody* const Chunk::getPhysicsBody() {
 	return collisionObject.getRigidBody();  
 }
 
-void Chunk::update() {
-
+StructureList Chunk::update() {
+	if (hasChanges) {
+		mesh();
+		hasChanges = false;
+	}
+	StructureList structures = nullptr;
 	//Make sure main thread does not stall on futures, if they are not ready just skip
-	if (buildTask.valid()) {
+	if (buildTask.valid() && (chunkFlag == ChunkFlags::Unloaded)) {
 		if (buildTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-			buildTask.get();
+			structures = buildTask.get();
+			//std::cout << structures->size();
+			chunkFlag = ChunkFlags::LoadedInRAM;
 		}
 	}
+
 	if (meshTask.valid()) {
 		if (meshTask.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
-			try {
-				auto chunkMeshes = meshTask.get();
+	
+			auto chunkMeshes = meshTask.get();
 
-				deleteBufferObjects();
-				opaqueBuffer = buildBufferObject(chunkMeshes.first->surfacePoints, chunkMeshes.first->indices);
-				translucentBuffer = buildBufferObject(chunkMeshes.second->surfacePoints, chunkMeshes.second->indices);
+			deleteBufferObjects();
+			opaqueBuffer = buildBufferObject(chunkMeshes.first->surfacePoints, chunkMeshes.first->indices);
+			translucentBuffer = buildBufferObject(chunkMeshes.second->surfacePoints, chunkMeshes.second->indices);
 
-				chunkMesh = chunkMeshes.first;
+			chunkMesh = chunkMeshes.first;
 
-				if (chunkMesh->indices.size() != 0)
-				{
-					btTriangleIndexVertexArray* collisionMesh = new btTriangleIndexVertexArray(chunkMesh->indices.size(), (int*)(chunkMesh->indices.data()), 3 * sizeof(int),
-						chunkMesh->surfacePoints.size(), (btScalar*)chunkMesh->surfacePoints.data(), sizeof(ChunkVertex));
+			if (chunkMesh->indices.size() != 0)
+			{
+				btTriangleIndexVertexArray* collisionMesh = new btTriangleIndexVertexArray(chunkMesh->indices.size(), (int*)(chunkMesh->indices.data()), 3 * sizeof(int),
+					chunkMesh->surfacePoints.size(), (btScalar*)chunkMesh->surfacePoints.data(), sizeof(ChunkVertex));
 
-					collisionObject.init(collisionMesh, getChunkPos());
-				}
-
-
-			}
-			catch (...) {
-				//Meshbuilding failed early do to surrounding chunk deconstruction
+				collisionObject.init(collisionMesh, getChunkPos());
 			}
 		}
 	}
+
+
+	return structures;
 }

@@ -15,7 +15,7 @@
 #include "../../Include/Color.h"
 #include "../../Include/Voxel.h"
 
-enum class ChunkFlags{LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
+enum class ChunkFlags{Unloaded,LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
 enum class VoxelRenderStyle{Opaque,Translucent};
 
@@ -102,28 +102,32 @@ public:
 
 };
 
+
+typedef std::shared_ptr<std::vector<glm::ivec4>> StructureList;
+
+typedef std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>> ChunkMeshPair;
 class Chunk {
 private:
-	CubeArray<VoxelKey, ChunkSize> voxelArray;
+	std::unique_ptr<CubeArray<VoxelKey, ChunkSize>> voxelArray;
 	const glm::ivec3 chunkPos;
 	BufferObject opaqueBuffer;
 	BufferObject translucentBuffer;
 
 	ChunkCollisionObject collisionObject;
 
-
+	bool hasChanges = false;
 
 	std::weak_ptr<Chunk> chunkNeighbours[7];
 
-	std::future< std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>>> meshTask;
-	std::shared_future<void> buildTask;
+	std::future<ChunkMeshPair> meshTask;
+	std::shared_future<StructureList> buildTask;
 
 	std::shared_ptr<ChunkMesh> chunkMesh;
 	std::shared_ptr<btTriangleIndexVertexArray> collisionMesh;
 
 	auto getAllRelevantVoxels(const std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
 
-	std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>> getAllMeshes(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
+	ChunkMeshPair getAllMeshes(std::array<std::shared_ptr<Chunk>, 7> chunkNeighbours);
 	//Takes the current chunk and all the surrounding voxels and returns a list of vertices and indices
 	std::shared_ptr<ChunkMesh> calculateMesh(std::shared_ptr<CubeArray<VoxelKey, ChunkSize + 2>> fullVoxels, VoxelRenderStyle style);
 
@@ -131,6 +135,12 @@ private:
 	BufferObject buildBufferObject(std::vector<ChunkVertex>& surfacePoints, std::vector<glm::ivec3>& indices);
 	void deleteBufferObjects();
 	std::atomic<ChunkFlags> chunkFlag = ChunkFlags::Empty;
+
+
+
+	//fills out VoxelArray using randomly generated algorithm
+	StructureList generateChunk();
+
 public:
 	//Creates an async job to mesh the given chunk
 	void mesh();
@@ -144,15 +154,14 @@ public:
 
 	//Draws the translucent part of the chunk only, done at the end of the draw calls
 	void drawTranslucent(Shader& shader);
-	//fills out VoxelArray using randomly generated algorithm
-	void generateChunk();
 
 	bool hasMesh();
 	
+	VoxelKey& getVoxelWithChanges(const glm::ivec3& pos);
 
 	bool isLoaded();
 
-	void update();
+	StructureList update();
 
 	btRigidBody* const getPhysicsBody();
 
@@ -164,6 +173,8 @@ public:
 	const glm::ivec3& getChunkPos(){
 		return chunkPos;
 	}
+
+	void setHasChanges(bool b) { hasChanges = b; }
 
 	Chunk() = delete;
 	Chunk& operator=(const Chunk&) = delete;

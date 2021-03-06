@@ -80,6 +80,14 @@ public:
 		return true;
 	}
 
+	T& operator[](int index) {
+		return cubeArray[index];
+	}
+
+	const T& operator[](int index)const {
+		return cubeArray[index];
+	}
+
 	T& get(const glm::ivec3& pos) {
 		return get(pos.x, pos.y, pos.z);
 	}
@@ -101,5 +109,9 @@ public:
 
 	T* const data() const {
 		return cubeArray;
+	}
+
+	int size() const {
+		return ArrSize * ArrSize * ArrSize;
 	}
 };

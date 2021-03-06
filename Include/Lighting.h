@@ -33,11 +33,11 @@ private:
 	glm::vec3 globalLightDir = glm::vec3(0.1, 0.5, 0.1);
 
 public:
-	DirectionalLight(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(0.5), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =32)
+	DirectionalLight(const glm::vec3& AmbientColor = glm::vec3(0.5), const glm::vec3& DiffuseColor = glm::vec3(0.5), const glm::vec3& SpecularColor = glm::vec3(0.5), float SpecularExponent =4)
 		: Light(AmbientColor,DiffuseColor, SpecularColor, SpecularExponent){}
 
 	void setGlobaLightDirection(const glm::vec3& dir) {
-		globalLightDir = dir;
+		globalLightDir = glm::normalize(dir);
 	}
 
 	void setShaderUniforms(Shader& shader) {

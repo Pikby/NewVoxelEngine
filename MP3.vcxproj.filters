@@ -113,6 +113,9 @@
     <ClInclude Include="Include\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Src\Include\ChunkData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="torch.fbx">
@@ -141,10 +144,5 @@
     <None Include="Docs\Features.md" />
     <None Include="Docs\Implementations.md" />
     <None Include="Docs\Plans.md" />
-    <None Include="Assets\torch.fbx" />
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="Assets\sphere.obj" />
-    <Object Include="Assets\bunny.obj" />
   </ItemGroup>
 </Project>

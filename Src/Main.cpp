@@ -51,15 +51,18 @@ private:
 
 
 
-	void mainLoop() {	
-		World world;		
+	void mainLoop() {
+		World world;
 
 		glEnable(GL_CULL_FACE);
 		glCullFace(GL_BACK);
 		glEnable(GL_DEPTH_TEST);
-		
+
 		Shader chunkShader("Chunk.fs", "Chunk.vs");
 		Shader debugShader("DebugDrawer.fs", "DebugDrawer.vs");
+		//world.addEntity(new Torch({ 0, 0, 0 }));
+		//world.addEntity(new Torch({0, 1, 0}));
+
 
 		Camera& camera = InputHandler::getCamera();
 		btDiscreteDynamicsWorld* physicsWorld = world.getPhysicsWorld();
@@ -83,6 +86,7 @@ private:
 			//Early testing functions
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
 				world.placeVoxel(Snow, camera);
+				world.generateTree(camera.getPosition());
 			}
 	
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
@@ -103,7 +107,7 @@ private:
 			glViewport(0, 0, width, height);
 	
 			world.drawDebugHitboxes(debugShader);
-			world.drawEntities(chunkShader, camera);
+			world.drawEntities(camera);
 			world.drawWorld(chunkShader,camera);
 			world.drawClouds(camera);
 	

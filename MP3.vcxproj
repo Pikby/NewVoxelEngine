@@ -186,6 +186,7 @@
     <ClInclude Include="Include\Perlin.h" />
     <ClInclude Include="Include\PlayerCharacter.h" />
     <ClInclude Include="Include\Shader.h" />
+    <ClInclude Include="Src\Include\ChunkData.h" />
     <ClInclude Include="Src\Include\stb_image.h" />
     <ClInclude Include="Include\Texture.h" />
     <ClInclude Include="Include\Voxel.h" />
@@ -196,7 +197,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />
-    <None Include="Assets\torch.fbx" />
     <None Include="Docs\Features.md" />
     <None Include="Docs\Implementations.md" />
     <None Include="Docs\Plans.md" />
@@ -220,10 +220,6 @@
     <None Include="Shaders\PingPong.fs" />
     <None Include="Shaders\PingPong.vs" />
     <None Include="torch.fbx" />
-  </ItemGroup>
-  <ItemGroup>
-    <Object Include="Assets\bunny.obj" />
-    <Object Include="Assets\sphere.obj" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

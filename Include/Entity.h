@@ -20,7 +20,7 @@ protected:
 	bool pointLightFlag = false;
 public:
 	Entity(){};
-	Entity(const glm::vec3& Pos, const glm::vec3& Facing){
+	Entity(const glm::vec3& Pos){
 		shape = std::make_unique<btSphereShape>(size);
 		btVector3 inertia = btVector3(0.0, 0.0, 0.0);
 		shape->calculateLocalInertia(2.0f, inertia);
@@ -41,8 +41,14 @@ public:
 		body->setRollingFriction(.1f);
 		body->setSpinningFriction(0.1f);
 	}
-
 	virtual ~Entity() {}
+
+
+	Shader& getDefaultShader() const {
+		static Shader shader("Model.fs", "Model.vs");
+		shader.use();
+		return shader;
+	}
 
 	glm::vec3 getPosition() const {
 		btTransform transform = body->getWorldTransform();
@@ -75,25 +81,7 @@ public:
 		return nullptr;
 	}
 
-	virtual void draw(Shader& shader, const Camera& camera) const {
-		
-		glm::mat4 model(1);
-		model = glm::translate(model, getPosition());
-		model = glm::scale(model, glm::vec3(0.01f));
-
-		shader.setMat4("model", model);
-		shader.setMat4("view", camera.getViewMatrix());
-		shader.setFloat("time", float(glfwGetTime()));
-		shader.setFloat("cloudSpeed", 50);
-		shader.setVec2("windDirection", glm::normalize(glm::vec2(1, 0)));
-
-	
-		static Model bunny("bunny.obj");
-		//bunny.Draw(shader);
-		glDisable(GL_CULL_FACE);
-		OpenGLCommon::drawQuad();
-		glEnable(GL_CULL_FACE);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	virtual void draw(const Camera& camera) const {
 	}
 
 	float getSize() {
@@ -132,20 +120,20 @@ public:
 	}
 
 
-	void draw(Shader& shader, const Camera& camera) const override {
+	void draw(const Camera& camera) const override {
+		Shader& shader = getDefaultShader();
 
-		static Shader Shader("Model.fs", "Model.vs");
 		glm::mat4 model(1);
 		model = getModelMatrix();
 		model = glm::translate(model,glm::vec3(0.f, -0.8f, 0.f));
 		model = glm::rotate(model, glm::radians(90.f), glm::vec3(-1, 0, 0));
 		//model = glm::scale(model, glm::vec3(0.01));
-		Shader.use();
-		Shader.setMat4("model",model);
+		shader.use();
+		shader.setMat4("model",model);
 		static Model torch("Assets/torch.fbx");
 
 		glCullFace(GL_FRONT);
-		torch.draw(Shader);
+		torch.draw(shader);
 		glCullFace(GL_BACK);
 	}
 
@@ -170,7 +158,6 @@ public:
 		object->setCollisionShape(shape.get());
 
 		glm::mat4 model = glm::translate(glm::mat4(1), Pos);
-
 		btTransform transform;
 		transform.setFromOpenGLMatrix((float*)&model);
 
@@ -183,23 +170,21 @@ public:
 		body->setSpinningFriction(0.1f);
 	}
 
-	void draw(Shader& SShader, const Camera& camera) const override {
+	void draw(const Camera& camera) const override {
 
-		static Shader shader("Model.fs", "Model.vs");
+		Shader& shader = getDefaultShader();
 		glm::mat4 model(1);
 		model = getModelMatrix();
 		model = glm::scale(model, glm::vec3(0.1f, 0.1f, 0.1f));
-		//model = glm::rotate(model, glm::radians(90.f), glm::vec3(-1, 0, 0));
-		//model = glm::scale(model, glm::vec3(0.01));
+	
 		shader.use();
 		shader.setMat4("model", model);
 		shader.setVec3("objColor", glm::vec3(0.5));
 		shader.setInt("translucent", 0);
-		static Model torch("Assets/sphere.obj");
+		static Model snowball("Assets/sphere.obj");
 
-		//glCullFace(GL_FRONT);
-		torch.draw(shader);
-		//glCullFace(GL_BACK);
+	
+		snowball.draw(shader);
 	}
 
 };
