@@ -8,11 +8,11 @@
 #include <glm/gtx/hash.hpp>
 
 
-#include "../../Include/Entity.h"
+#include "Include/Entity.h"
 #include "Chunk.h"
-#include "../../Include/Camera.h"
-#include "../../Include/Lighting.h"
-#include "../../Include/DebugDrawer.h"
+#include "Include/Camera.h"
+#include "Include/Lighting.h"
+#include "Include/DebugDrawer.h"
 struct PhysicsWorld {
 	std::unique_ptr<DebugDrawer> debugDrawer;
 	std::unique_ptr<btDefaultCollisionConfiguration> collisionConfiguration;
@@ -31,10 +31,7 @@ private:
 	DirectionalLight globalLighting;
 	PhysicsWorld physicsWorld;
 
-	float renderDistance = 10;
-
-
-
+	float renderDistance = 14;
 	bool drawDebugHitBoxes = false;
 	//Takes block in world position and tests to see if the block change effects any neighbouring chunks, if it does reload them
 	void loadNeighbouringChunks(const glm::ivec3& pos);
@@ -54,38 +51,27 @@ public:
 
 	//Draws all loaded chunks in the world
 	void drawChunks(Shader& shader, const Camera& camera, unsigned int renderDistance, bool translucent = false);
-
 	void drawClouds(const Camera& camera);
-	
 	void drawEntities( const Camera& camera);
-
 	void drawDebugHitboxes(Shader& shader) {
 		physicsWorld.debugDrawer->draw(shader);
 	}
 	std::shared_ptr<Chunk> getChunk(const glm::ivec3& chunkPos);
 
 	void drawDirectionalShadows(const Camera& camera);
-
 	void drawPointShadows(const Camera& camera);
 	//Scans for chunks around position and unloads them 
 	void scanForChunks(const glm::vec3& pos);
-
 	VoxelKey& getAndUpdateVoxel(const glm::ivec3& pos);
-
 	void drawWorld(Shader& shader, const Camera& camera);
-
 	void update(btDiscreteDynamicsWorld* physicsWorld, const Camera& camera);
 
 	//Returns a reference to a voxel in the world
 	VoxelKey& getVoxel(const glm::ivec3& pos);
-
 	//Takes a camera argument and attempts to place a voxel wherever the camera is looking
 	void placeVoxel(VoxelKey vox,const Camera& camera);
 
 	void addEntity(Entity* entity);
-
 	void setDebugHitBoxes(bool b) { drawDebugHitBoxes = b; }
-
 	void generateTree(const glm::ivec3& pos);
-
 };

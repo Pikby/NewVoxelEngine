@@ -3,7 +3,7 @@
 #include <glad/glad.h> 
 #include <GLFW/glfw3.h>
 #include <map>
-#include "../Include/Camera.h"
+#include "Include/Camera.h"
 #include "Include/Inputs.h"
 #include <iostream>
 

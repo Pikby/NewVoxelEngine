@@ -7,10 +7,10 @@
 #include "Include/World.h"
 #include "Include/Inputs.h"
 
-#include "../Include/Camera.h"
-#include "../Include/Model.h"
-#include "../Include/PlayerCharacter.h"
-
+#include "Include/Camera.h"
+#include "Include/Model.h"
+#include "Include/PlayerCharacter.h"
+#include "Include/GLMHelpers.h"
 
 
 std::vector<unsigned int> Shader::shaderList;
@@ -24,15 +24,13 @@ private:
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-		
-		window = glfwCreateWindow(800, 600, "Abyss 2.0", NULL, NULL);
-		if (window == NULL) {
+		window = glfwCreateWindow(800, 600, "Abyss 2.0", nullptr, nullptr);
+		if (window == nullptr) {
 			std::cout << "Failed to create GLFW window" << std::endl;
 			glfwTerminate();
 			throw - 1;
 		}
 		glfwMakeContextCurrent(window);
-
 
 		if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
 			std::cout << "Failed to initialize GLAD" << std::endl;
@@ -41,15 +39,11 @@ private:
 
 		glViewport(0, 0, 800, 600);
 		glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-
 	}
 
 	static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 		glViewport(0, 0, width, height);
 	}
-
-
 
 	void mainLoop() {
 		World world;
@@ -62,7 +56,6 @@ private:
 		Shader debugShader("DebugDrawer.fs", "DebugDrawer.vs");
 		//world.addEntity(new Torch({ 0, 0, 0 }));
 		//world.addEntity(new Torch({0, 1, 0}));
-
 
 		Camera& camera = InputHandler::getCamera();
 		btDiscreteDynamicsWorld* physicsWorld = world.getPhysicsWorld();
@@ -81,14 +74,17 @@ private:
 			InputHandler::notify();
 			world.scanForChunks(camera.getPosition());
 			world.update(physicsWorld, camera);
-
-	
 			//Early testing functions
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_LEFT)) {
 				world.placeVoxel(Snow, camera);
-				world.generateTree(camera.getPosition());
+				//world.addEntity(new Snowball(camera.getPosition()));
+				//world.generateTree(camera.getPosition());
 			}
 	
+			if (InputHandler::pollKey(GLFW_KEY_1)) {
+				world.addEntity(new Snowball(camera.getPosition()));
+			}
+
 			if (InputHandler::pollKey(GLFW_MOUSE_BUTTON_RIGHT)) {
 				world.placeVoxel(Empty, camera);
 			}
@@ -102,8 +98,8 @@ private:
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		
 
-			world.drawDirectionalShadows(camera);
-			world.drawPointShadows(camera);
+			//world.drawDirectionalShadows(camera);
+			//world.drawPointShadows(camera);
 			glViewport(0, 0, width, height);
 	
 			world.drawDebugHitboxes(debugShader);
@@ -134,7 +130,6 @@ int main() {
 	VoxelEngineInstance app;
 	try {
 		app.run();
-
 	}
 	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;

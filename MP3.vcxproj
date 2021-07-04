@@ -133,6 +133,7 @@
       <Optimization>MaxSpeed</Optimization>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>C:\Users\kibby\source\repos\NewVoxelEngine\Src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -152,6 +153,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <AdditionalIncludeDirectories>C:\Users\kibby\source\repos\NewVoxelEngine\Src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -179,6 +181,7 @@
     <ClInclude Include="Include\Common.h" />
     <ClInclude Include="Include\DebugDrawer.h" />
     <ClInclude Include="Include\Entity.h" />
+    <ClInclude Include="Include\GLMHelpers.h" />
     <ClInclude Include="Include\Inputs.h" />
     <ClInclude Include="Include\Lighting.h" />
     <ClInclude Include="Include\Mesh.h" />

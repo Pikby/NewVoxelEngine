@@ -7,6 +7,7 @@ in vec4 Color;
 in vec3 WorldPos;
 in vec4 DirectionalShadowPos;
 
+vec3 norm = Norm;
 
 struct DirectionalLight{
 	vec3 direction;
@@ -130,14 +131,15 @@ vec3 calculatePointLightColor(PointLight light){
     vec3 diffuse  = light.diffuse  * attenuation;
     vec3 specular = light.specular * spec *attenuation;
 
-	float shadow =1-calculatePointLightShadow(light);
+	float shadow = 1;
+	//float shadow =1-calculatePointLightShadow(light);
     return (shadow)*(ambient +diffuse + specular);
 }
 
 vec3 calculateDirectionalLightColor(){
-	vec3 diffuse = max(dot(Norm, directionalLight.direction),0.0)*directionalLight.diffuse;
+	vec3 diffuse = max(dot(norm, directionalLight.direction),0.0)*directionalLight.diffuse;
 	vec3 viewDir = normalize(cameraPos-WorldPos);
-	vec3 reflectDir = reflect(-directionalLight.direction,Norm);
+	vec3 reflectDir = reflect(-directionalLight.direction,norm);
 	float spec = pow(max(dot(viewDir,reflectDir),0),directionalLight.specularExponent);
 	vec3 specular = 0.5*spec*directionalLight.specular;
 
@@ -145,7 +147,7 @@ vec3 calculateDirectionalLightColor(){
 	vec4 scPostW = DirectionalShadowPos/DirectionalShadowPos.w; 
 	scPostW = scPostW * 0.5 + 0.5;
 	
-
+	return (directionalLight.ambient+(diffuse+specular));
 	float shadow = 0.0; 
 	
 	
@@ -194,9 +196,4 @@ void main() {
 		float alpha = max((texture(waterTexture,((WorldPos.xz +vec2(time*10))/1024.0f)).r),0.7);
 		FragColor.a *= alpha;
 	}
-	
-	
-
-
-	
 }

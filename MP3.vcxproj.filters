@@ -116,6 +116,9 @@
     <ClInclude Include="Src\Include\ChunkData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Include\GLMHelpers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="torch.fbx">

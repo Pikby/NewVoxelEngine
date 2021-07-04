@@ -1,5 +1,5 @@
-#include "../Include/Common.h"
-#include "../Include/Shader.h"
+#include "Include/Common.h"
+#include "Include/Shader.h"
 void OpenGLCommon::drawQuad(){
 	 struct QuadVertex {
 		 glm::vec3 pos;

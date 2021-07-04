@@ -10,10 +10,10 @@
 #include <btBulletDynamicsCommon.h>
 #include <memory>
 
-#include "../../Include/Shader.h"
-#include "../../Include/Array3D.h"
-#include "../../Include/Color.h"
-#include "../../Include/Voxel.h"
+#include "Include/Shader.h"
+#include "Include/Array3D.h"
+#include "Include/Color.h"
+#include "Include/Voxel.h"
 
 enum class ChunkFlags{Unloaded,LoadedInRAM,QueuedToMesh,LoadedToGPU,Empty};
 
@@ -104,8 +104,8 @@ public:
 
 
 typedef std::shared_ptr<std::vector<glm::ivec4>> StructureList;
-
 typedef std::pair< std::shared_ptr<ChunkMesh>, std::shared_ptr<ChunkMesh>> ChunkMeshPair;
+
 class Chunk {
 private:
 	std::unique_ptr<CubeArray<VoxelKey, ChunkSize>> voxelArray;
@@ -150,10 +150,8 @@ public:
 	VoxelKey& getVoxel(const glm::ivec3& pos);
 
 	//Draws the given chunk with a shader, if the mesh is not valid/built function will return, otherwise it will automatically build the buffers
-	void draw(Shader& shader);
+	void draw(Shader& shader, bool isTranslucent = false);
 
-	//Draws the translucent part of the chunk only, done at the end of the draw calls
-	void drawTranslucent(Shader& shader);
 
 	bool hasMesh();
 	
@@ -181,3 +179,5 @@ public:
 	Chunk(const Chunk&) = delete;
 
 };
+
+typedef std::shared_ptr<Chunk> ChunkPtr;
